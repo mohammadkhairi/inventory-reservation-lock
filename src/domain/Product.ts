@@ -4,11 +4,13 @@ export interface Product {
   readonly totalStock: number;
 }
 
-export function createProduct(input: {
+export interface CreateProductInput {
   id: string;
   name: string;
   totalStock: number;
-}): Product {
+}
+
+export function createProduct(input: CreateProductInput): Product {
   if (!input.id) throw new Error('Product.id is required');
   if (!input.name) throw new Error('Product.name is required');
   if (!Number.isInteger(input.totalStock) || input.totalStock < 0) {

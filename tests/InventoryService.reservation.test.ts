@@ -1,11 +1,17 @@
-import { describe, it, expect } from 'vitest';
-import { makeHarness } from './helpers.js';
-import { InsufficientStockError, ProductNotFoundError, InvalidQuantityError } from '../src/domain/errors.js';
-import { ReservationState } from '../src/domain/ReservationState.js';
+import { beforeEach, describe, it, expect } from 'vitest';
+import { makeHarness, truncateAll } from './helpers.js';
+import {
+  InsufficientStockError,
+  InvalidQuantityError,
+  ProductNotFoundError,
+} from '../src/domain/errors.js';
+import { ReservationState } from '../src/domain/reservation.js';
 
-describe('Level 1 — basic reservation', () => {
+describe('InventoryService — reserve', () => {
+  beforeEach(truncateAll);
+
   it('reserves an item when stock is available', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await h.seedProduct('sku-1', 3);
 
     const reservation = await h.service.reserve({
@@ -22,7 +28,7 @@ describe('Level 1 — basic reservation', () => {
   });
 
   it('rejects a reservation when stock is exhausted', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await h.seedProduct('sku-1', 1);
 
     await h.service.reserve({ productId: 'sku-1', userId: 'user-A', quantity: 1 });
@@ -33,14 +39,14 @@ describe('Level 1 — basic reservation', () => {
   });
 
   it('rejects a reservation for a missing product', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await expect(
       h.service.reserve({ productId: 'missing', userId: 'user-A', quantity: 1 }),
     ).rejects.toBeInstanceOf(ProductNotFoundError);
   });
 
   it('rejects non-positive quantities', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await h.seedProduct('sku-1', 5);
     await expect(
       h.service.reserve({ productId: 'sku-1', userId: 'user-A', quantity: 0 }),
@@ -54,7 +60,7 @@ describe('Level 1 — basic reservation', () => {
   });
 
   it('allows partial reservations up to the exact remainder', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await h.seedProduct('sku-1', 5);
     await h.service.reserve({ productId: 'sku-1', userId: 'A', quantity: 3 });
     await h.service.reserve({ productId: 'sku-1', userId: 'B', quantity: 2 });

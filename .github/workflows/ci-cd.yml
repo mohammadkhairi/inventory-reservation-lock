@@ -1,0 +1,106 @@
+name: CI/CD
+
+# Runs tests on every push/PR to main.
+# Deploys are manual: pick "staging" or "production" via workflow_dispatch.
+# The manual run must be started from the `main` branch.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        required: true
+        default: staging
+        options:
+          - staging
+          - production
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: inventory_test
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d inventory_test"
+          --health-interval=2s
+          --health-timeout=2s
+          --health-retries=30
+
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:55432/inventory_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    if: github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+
+    # Only allow deploys from main.
+    # GitHub Environments provide per-env secrets + protection rules
+    # (required reviewers, wait timer, branch restrictions).
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Guard — deploys must originate from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Deploys can only be triggered from the main branch (got ${{ github.ref }})"
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run database migrations
+        # DATABASE_URL comes from the selected GitHub Environment's secrets.
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run db:migrate
+
+      - name: Deploy
+        # Replace with the deploy command for your platform (Fly / Render /
+        # Cloud Run / ECS / etc). Kept as a placeholder so wiring the actual
+        # deploy is a one-line change with no other moving parts to unpick.
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          echo "Deploying to ${{ inputs.environment }}"
+          # e.g. flyctl deploy --app inventory-${{ inputs.environment }} --remote-only

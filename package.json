@@ -2,6 +2,7 @@
   "name": "everest-inventory-reservation",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Inventory reservation system that prevents overselling under high-concurrency flash sales.",
   "main": "dist/index.js",
   "scripts": {
@@ -11,11 +12,19 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "drizzle-zod": "^0.8.3",
     "express": "^4.19.2",
+    "pino": "^10.3.1",
+    "pino-pretty": "^13.1.3",
+    "postgres": "^3.4.9",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -23,6 +32,8 @@
     "@types/node": "^20.14.11",
     "@types/supertest": "^6.0.2",
     "@vitest/coverage-v8": "^1.6.0",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "supertest": "^7.0.0",
     "tsx": "^4.16.2",
     "typescript": "^5.5.3",

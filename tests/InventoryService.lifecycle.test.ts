@@ -1,16 +1,15 @@
-import { describe, it, expect } from 'vitest';
-import { makeHarness } from './helpers.js';
-import { ReservationState } from '../src/domain/ReservationState.js';
-import {
-  InvalidReservationStateError,
-  ReservationNotFoundError,
-} from '../src/domain/errors.js';
+import { beforeEach, describe, it, expect } from 'vitest';
+import { makeHarness, truncateAll } from './helpers.js';
+import { InvalidReservationStateError, ReservationNotFoundError } from '../src/domain/errors.js';
+import { ReservationState } from '../src/domain/reservation.js';
 
 const TWO_MINUTES = 2 * 60 * 1000;
 
-describe('Level 2 — reservation lifecycle', () => {
+describe('InventoryService — lifecycle (confirm / cancel / expiry)', () => {
+  beforeEach(truncateAll);
+
   it('transitions ACTIVE → CONFIRMED and permanently consumes stock', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await h.seedProduct('sku', 1);
 
     const r = await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
@@ -24,7 +23,7 @@ describe('Level 2 — reservation lifecycle', () => {
   });
 
   it('transitions ACTIVE → CANCELLED and releases stock', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await h.seedProduct('sku', 1);
 
     const r = await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
@@ -36,7 +35,7 @@ describe('Level 2 — reservation lifecycle', () => {
   });
 
   it('auto-releases stock once the 2-minute hold elapses (lazy)', async () => {
-    const h = await makeHarness({ holdDurationMs: TWO_MINUTES });
+    const h = makeHarness({ holdDurationMs: TWO_MINUTES });
     await h.seedProduct('sku', 1);
 
     await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
@@ -50,7 +49,7 @@ describe('Level 2 — reservation lifecycle', () => {
   });
 
   it('allows a new reservation after an expired hold', async () => {
-    const h = await makeHarness({ holdDurationMs: TWO_MINUTES });
+    const h = makeHarness({ holdDurationMs: TWO_MINUTES });
     await h.seedProduct('sku', 1);
     await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
 
@@ -61,7 +60,7 @@ describe('Level 2 — reservation lifecycle', () => {
   });
 
   it('sweepExpired persists ACTIVE → EXPIRED transitions', async () => {
-    const h = await makeHarness({ holdDurationMs: TWO_MINUTES });
+    const h = makeHarness({ holdDurationMs: TWO_MINUTES });
     await h.seedProduct('sku', 3);
 
     const r1 = await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
@@ -78,7 +77,7 @@ describe('Level 2 — reservation lifecycle', () => {
   });
 
   it('rejects confirming an EXPIRED reservation', async () => {
-    const h = await makeHarness({ holdDurationMs: TWO_MINUTES });
+    const h = makeHarness({ holdDurationMs: TWO_MINUTES });
     await h.seedProduct('sku', 1);
 
     const r = await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
@@ -88,7 +87,7 @@ describe('Level 2 — reservation lifecycle', () => {
   });
 
   it('rejects double-confirm', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await h.seedProduct('sku', 1);
     const r = await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
     await h.service.confirm(r.id);
@@ -96,7 +95,7 @@ describe('Level 2 — reservation lifecycle', () => {
   });
 
   it('rejects cancelling a CONFIRMED reservation (purchases are final)', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await h.seedProduct('sku', 1);
     const r = await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
     await h.service.confirm(r.id);
@@ -104,7 +103,7 @@ describe('Level 2 — reservation lifecycle', () => {
   });
 
   it('rejects operations on unknown reservations', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await expect(h.service.confirm('nope')).rejects.toBeInstanceOf(ReservationNotFoundError);
     await expect(h.service.cancel('nope')).rejects.toBeInstanceOf(ReservationNotFoundError);
   });

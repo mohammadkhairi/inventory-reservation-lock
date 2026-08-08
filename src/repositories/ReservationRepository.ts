@@ -1,4 +1,11 @@
-import type { Reservation } from '../domain/Reservation.js';
+import { eq } from 'drizzle-orm';
+import { db } from '../db/db.js';
+import {
+  reservationInsertSchema,
+  reservations,
+  type ReservationSelect,
+} from '../db/schema/reservation.js';
+import type { Reservation, ReservationState } from '../domain/reservation.js';
 
 export interface ReservationRepository {
   findById(id: string): Promise<Reservation | null>;
@@ -7,41 +14,44 @@ export interface ReservationRepository {
   all(): Promise<Reservation[]>;
 }
 
+/** DB row → domain. The pgEnum guarantees `state` is a valid ReservationState. */
+const toDomain = (row: ReservationSelect): Reservation => ({
+  ...row,
+  state: row.state as ReservationState,
+});
+
 /**
- * In-memory reservation store. Reservations are kept immutable in the map, so
- * concurrent readers always observe a coherent snapshot even without locking
- * (locking is applied at the service layer, per product).
+ * Factory. Closes over the module-level `db()` helper — when called inside a
+ * `locker.withLock` critical section, `db()` returns the current transaction
+ * (via AsyncLocalStorage) so writes participate in the advisory-locked tx.
  */
-export class InMemoryReservationRepository implements ReservationRepository {
-  private readonly byId = new Map<string, Reservation>();
-  private readonly byProduct = new Map<string, Set<string>>();
+export const reservationRepository = (): ReservationRepository => ({
+  async findById(id) {
+    const [row] = await db().select().from(reservations).where(eq(reservations.id, id)).limit(1);
+    return row ? toDomain(row) : null;
+  },
 
-  async findById(id: string): Promise<Reservation | null> {
-    return this.byId.get(id) ?? null;
-  }
+  async findByProductId(productId) {
+    const rows = await db()
+      .select()
+      .from(reservations)
+      .where(eq(reservations.productId, productId));
+    return rows.map(toDomain);
+  },
 
-  async findByProductId(productId: string): Promise<Reservation[]> {
-    const ids = this.byProduct.get(productId);
-    if (!ids) return [];
-    const result: Reservation[] = [];
-    for (const id of ids) {
-      const reservation = this.byId.get(id);
-      if (reservation) result.push(reservation);
-    }
-    return result;
-  }
+  async save(reservation) {
+    const value = reservationInsertSchema.parse(reservation);
+    await db()
+      .insert(reservations)
+      .values(value)
+      .onConflictDoUpdate({
+        target: reservations.id,
+        set: { state: value.state, updatedAt: value.updatedAt, expiresAt: value.expiresAt },
+      });
+  },
 
-  async save(reservation: Reservation): Promise<void> {
-    this.byId.set(reservation.id, reservation);
-    let ids = this.byProduct.get(reservation.productId);
-    if (!ids) {
-      ids = new Set();
-      this.byProduct.set(reservation.productId, ids);
-    }
-    ids.add(reservation.id);
-  }
-
-  async all(): Promise<Reservation[]> {
-    return Array.from(this.byId.values());
-  }
-}
+  async all() {
+    const rows = await db().select().from(reservations);
+    return rows.map(toDomain);
+  },
+});

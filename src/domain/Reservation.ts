@@ -1,4 +1,11 @@
-import { ReservationState } from './ReservationState.js';
+import type { Product } from './product.js';
+
+export enum ReservationState {
+  ACTIVE = 'ACTIVE',
+  CONFIRMED = 'CONFIRMED',
+  CANCELLED = 'CANCELLED',
+  EXPIRED = 'EXPIRED',
+}
 
 export interface Reservation {
   readonly id: string;
@@ -11,30 +18,47 @@ export interface Reservation {
   readonly expiresAt: number;
 }
 
-export function withState(
-  reservation: Reservation,
-  state: ReservationState,
-  now: number,
-): Reservation {
-  return { ...reservation, state, updatedAt: now };
+export interface AvailabilitySnapshot {
+  productId: string;
+  totalStock: number;
+  activeReservations: number;
+  confirmedSales: number;
+  availableStock: number;
+}
+
+export function withState(r: Reservation, state: ReservationState, now: number): Reservation {
+  return { ...r, state, updatedAt: now };
 }
 
 /**
- * Returns the reservation's *effective* state at `now` without persisting a change.
- * An ACTIVE reservation whose `expiresAt` has passed is effectively EXPIRED.
+ * An ACTIVE reservation past its `expiresAt` counts as EXPIRED for availability
+ * even before the sweeper materializes the transition — so a stalled sweeper can
+ * never cause a phantom hold.
  */
-export function effectiveState(reservation: Reservation, now: number): ReservationState {
-  if (reservation.state === ReservationState.ACTIVE && reservation.expiresAt <= now) {
+export function effectiveState(r: Reservation, now: number): ReservationState {
+  if (r.state === ReservationState.ACTIVE && r.expiresAt <= now) {
     return ReservationState.EXPIRED;
   }
-  return reservation.state;
+  return r.state;
 }
 
-/**
- * Whether the reservation currently consumes inventory (active hold or confirmed sale).
- * Uses `effectiveState` so expired holds correctly release stock even before persistence.
- */
-export function consumesInventory(reservation: Reservation, now: number): boolean {
-  const state = effectiveState(reservation, now);
-  return state === ReservationState.ACTIVE || state === ReservationState.CONFIRMED;
+export function computeAvailability(
+  product: Product,
+  reservations: readonly Reservation[],
+  now: number,
+): AvailabilitySnapshot {
+  let active = 0;
+  let confirmed = 0;
+  for (const r of reservations) {
+    const state = effectiveState(r, now);
+    if (state === ReservationState.ACTIVE) active += r.quantity;
+    else if (state === ReservationState.CONFIRMED) confirmed += r.quantity;
+  }
+  return {
+    productId: product.id,
+    totalStock: product.totalStock,
+    activeReservations: active,
+    confirmedSales: confirmed,
+    availableStock: Math.max(0, product.totalStock - active - confirmed),
+  };
 }

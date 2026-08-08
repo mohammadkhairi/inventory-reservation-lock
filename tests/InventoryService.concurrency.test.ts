@@ -1,11 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { makeHarness } from './helpers.js';
+import { beforeEach, describe, it, expect } from 'vitest';
+import { makeHarness, truncateAll } from './helpers.js';
 import { InsufficientStockError } from '../src/domain/errors.js';
-import { ReservationState } from '../src/domain/ReservationState.js';
+import { ReservationState } from '../src/domain/reservation.js';
 
-describe('Level 3 — concurrency', () => {
-  it('the canonical flash-sale scenario: stock=1, 500 concurrent reservations → exactly 1 success', async () => {
-    const h = await makeHarness();
+describe('InventoryService — concurrency', () => {
+  beforeEach(truncateAll);
+
+  it('stock=1 with 500 concurrent reservations yields exactly 1 success', async () => {
+    const h = makeHarness();
     await h.seedProduct('flash-sku', 1);
 
     const attempts = Array.from({ length: 500 }, (_, i) =>
@@ -28,8 +30,8 @@ describe('Level 3 — concurrency', () => {
     expect(snapshot.activeReservations).toBe(1);
   });
 
-  it('N successes for stock=N under heavy concurrency', async () => {
-    const h = await makeHarness();
+  it('stock=N under 500 concurrent reservations yields exactly N successes', async () => {
+    const h = makeHarness();
     const stock = 25;
     const requests = 500;
     await h.seedProduct('bulk-sku', stock);
@@ -48,7 +50,7 @@ describe('Level 3 — concurrency', () => {
   });
 
   it('parallelizes across products (no head-of-line blocking)', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     for (let i = 0; i < 10; i += 1) {
       await h.seedProduct(`sku-${i}`, 1);
     }
@@ -62,10 +64,9 @@ describe('Level 3 — concurrency', () => {
   });
 
   it('mixed reserve/confirm/cancel bursts never oversell', async () => {
-    const h = await makeHarness();
+    const h = makeHarness();
     await h.seedProduct('sku', 10);
 
-    // 100 reserves interleaved with confirm/cancel of prior reservations.
     const reserved: string[] = [];
     const ops: Array<Promise<unknown>> = [];
     for (let i = 0; i < 100; i += 1) {
@@ -78,9 +79,10 @@ describe('Level 3 — concurrency', () => {
     }
     await Promise.all(ops);
 
-    // Randomly confirm ~half of the successful reservations, cancel the rest.
     const decisions = reserved.map((id, idx) =>
-      idx % 2 === 0 ? h.service.confirm(id).catch(() => undefined) : h.service.cancel(id).catch(() => undefined),
+      idx % 2 === 0
+        ? h.service.confirm(id).catch(() => undefined)
+        : h.service.cancel(id).catch(() => undefined),
     );
     await Promise.all(decisions);
 

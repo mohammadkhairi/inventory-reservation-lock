@@ -19,14 +19,14 @@ export class DomainError extends Error {
 }
 
 export class ProductNotFoundError extends DomainError {
-  constructor(productId: string) {
-    super(ErrorCode.PRODUCT_NOT_FOUND, `Product not found: ${productId}`);
+  constructor(id: string) {
+    super(ErrorCode.PRODUCT_NOT_FOUND, `Product not found: ${id}`);
   }
 }
 
 export class ReservationNotFoundError extends DomainError {
-  constructor(reservationId: string) {
-    super(ErrorCode.RESERVATION_NOT_FOUND, `Reservation not found: ${reservationId}`);
+  constructor(id: string) {
+    super(ErrorCode.RESERVATION_NOT_FOUND, `Reservation not found: ${id}`);
   }
 }
 
@@ -40,11 +40,8 @@ export class InsufficientStockError extends DomainError {
 }
 
 export class InvalidReservationStateError extends DomainError {
-  constructor(currentState: string, attempted: string) {
-    super(
-      ErrorCode.INVALID_RESERVATION_STATE,
-      `Cannot ${attempted} a reservation in state ${currentState}`,
-    );
+  constructor(current: string, attempted: string) {
+    super(ErrorCode.INVALID_RESERVATION_STATE, `Cannot ${attempted} a reservation in state ${current}`);
   }
 }
 

@@ -1,6 +1,5 @@
-import type { Product } from '../domain/Product.js';
-import { effectiveState, withState, type Reservation } from '../domain/Reservation.js';
-import { ReservationState } from '../domain/ReservationState.js';
+import { randomUUID } from 'node:crypto';
+import { DEFAULT_HOLD_DURATION_MS } from '../config/constants.js';
 import {
   InsufficientStockError,
   InvalidQuantityError,
@@ -8,212 +7,153 @@ import {
   ProductNotFoundError,
   ReservationNotFoundError,
 } from '../domain/errors.js';
-import type { Clock } from '../infrastructure/Clock.js';
-import type { IdGenerator } from '../infrastructure/IdGenerator.js';
-import { KeyedMutex } from '../infrastructure/KeyedMutex.js';
-import type { ProductRepository } from '../repositories/ProductRepository.js';
-import type { ReservationRepository } from '../repositories/ReservationRepository.js';
-import { DEFAULT_HOLD_DURATION_MS } from '../config/constants.js';
+import type { Product } from '../domain/product.js';
+import {
+  computeAvailability,
+  effectiveState,
+  withState,
+  ReservationState,
+  type AvailabilitySnapshot,
+  type Reservation,
+} from '../domain/reservation.js';
+import type { Clock } from '../infrastructure/clock.js';
+import type { Locker } from '../infrastructure/locker.js';
+import type { ProductRepository } from '../repositories/productRepository.js';
+import type { ReservationRepository } from '../repositories/reservationRepository.js';
 
-export interface AvailabilitySnapshot {
+export interface ReserveInput {
   productId: string;
-  totalStock: number;
-  activeReservations: number;
-  confirmedSales: number;
-  availableStock: number;
+  userId: string;
+  quantity: number;
 }
 
-export interface InventoryServiceOptions {
+export interface InventoryService {
+  getAvailability(productId: string): Promise<AvailabilitySnapshot>;
+  reserve(input: ReserveInput): Promise<Reservation>;
+  confirm(reservationId: string): Promise<Reservation>;
+  cancel(reservationId: string): Promise<Reservation>;
+  /** Materializes ACTIVE→EXPIRED for audit visibility. Availability never depends on it. */
+  sweepExpired(): Promise<Reservation[]>;
+}
+
+export interface InventoryServiceDeps {
   products: ProductRepository;
   reservations: ReservationRepository;
+  locker: Locker;
   clock: Clock;
-  idGenerator: IdGenerator;
-  /** Locking strategy — injectable so tests can substitute a spy. */
-  mutex?: KeyedMutex;
-  /** How long an ACTIVE reservation holds stock. Defaults to 2 minutes. */
   holdDurationMs?: number;
 }
 
 /**
- * Coordinates all reservation lifecycle transitions.
- *
- * ## Concurrency model
- * Every operation that reads-then-writes reservation state for a product goes
- * through `mutex.runExclusive(productId, ...)`. Because there is exactly one
- * lock per product, operations on different products run in parallel while
- * operations on the same product are serialized. This is the natural
- * granularity for inventory: overselling is a per-product invariant.
- *
- * Consistency is enforced by the formula
- *   available = totalStock − Σ quantity(reservations where effectiveState ∈ {ACTIVE, CONFIRMED})
- * evaluated inside the lock immediately before the write.
- *
- * ## Expiry model
- * We use *lazy expiry*: `effectiveState` treats any ACTIVE reservation past
- * `expiresAt` as EXPIRED for availability math, regardless of what is on disk.
- * `sweepExpired` optionally persists those transitions so audit reads see the
- * final state. Correctness of availability never depends on the sweeper
- * running.
+ * Every read-then-write runs inside `locker.withLock(productId, …)` so
+ * overselling is impossible. Backed by `pg_advisory_xact_lock` inside a
+ * transaction whose handle flows to repositories via AsyncLocalStorage.
  */
-export class InventoryService {
-  private readonly products: ProductRepository;
-  private readonly reservations: ReservationRepository;
-  private readonly clock: Clock;
-  private readonly idGenerator: IdGenerator;
-  private readonly mutex: KeyedMutex;
-  private readonly holdDurationMs: number;
+export const createInventoryService = (deps: InventoryServiceDeps): InventoryService => {
+  const { products, reservations, locker, clock } = deps;
+  const holdDurationMs = deps.holdDurationMs ?? DEFAULT_HOLD_DURATION_MS;
 
-  constructor(options: InventoryServiceOptions) {
-    this.products = options.products;
-    this.reservations = options.reservations;
-    this.clock = options.clock;
-    this.idGenerator = options.idGenerator;
-    this.mutex = options.mutex ?? new KeyedMutex();
-    this.holdDurationMs = options.holdDurationMs ?? DEFAULT_HOLD_DURATION_MS;
-  }
+  const requireProduct = async (id: string): Promise<Product> => {
+    const product = await products.findById(id);
+    if (!product) throw new ProductNotFoundError(id);
+    return product;
+  };
 
-  async getAvailability(productId: string): Promise<AvailabilitySnapshot> {
-    return this.mutex.runExclusive(productId, async () => {
-      const product = await this.requireProduct(productId);
-      const reservations = await this.reservations.findByProductId(productId);
-      return this.snapshot(product, reservations);
-    });
-  }
-
-  async reserve(input: {
-    productId: string;
-    userId: string;
-    quantity: number;
-  }): Promise<Reservation> {
-    if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
-      throw new InvalidQuantityError(input.quantity);
-    }
-
-    return this.mutex.runExclusive(input.productId, async () => {
-      const product = await this.requireProduct(input.productId);
-      const reservations = await this.reservations.findByProductId(input.productId);
-      const snapshot = this.snapshot(product, reservations);
-
-      if (snapshot.availableStock < input.quantity) {
-        throw new InsufficientStockError(snapshot.availableStock, input.quantity);
-      }
-
-      const now = this.clock.now();
-      const reservation: Reservation = {
-        id: this.idGenerator.next(),
-        productId: input.productId,
-        userId: input.userId,
-        quantity: input.quantity,
-        state: ReservationState.ACTIVE,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: now + this.holdDurationMs,
-      };
-      await this.reservations.save(reservation);
-      return reservation;
-    });
-  }
-
-  async confirm(reservationId: string): Promise<Reservation> {
-    return this.transition(reservationId, ReservationState.CONFIRMED, 'confirm');
-  }
-
-  async cancel(reservationId: string): Promise<Reservation> {
-    return this.transition(reservationId, ReservationState.CANCELLED, 'cancel');
-  }
-
-  /**
-   * Persists ACTIVE→EXPIRED transitions for any reservation whose hold has
-   * elapsed. Safe to call at any cadence; correctness does not depend on it.
-   * Returns the reservations that were transitioned.
-   */
-  async sweepExpired(): Promise<Reservation[]> {
-    const now = this.clock.now();
-    const all = await this.reservations.all();
-    const dueByProduct = new Map<string, Reservation[]>();
-    for (const r of all) {
-      if (r.state === ReservationState.ACTIVE && r.expiresAt <= now) {
-        const bucket = dueByProduct.get(r.productId) ?? [];
-        bucket.push(r);
-        dueByProduct.set(r.productId, bucket);
-      }
-    }
-
-    const expired: Reservation[] = [];
-    for (const [productId, bucket] of dueByProduct) {
-      // Re-check inside the lock so a concurrent confirm/cancel wins deterministically.
-      const swept = await this.mutex.runExclusive(productId, async () => {
-        const result: Reservation[] = [];
-        for (const r of bucket) {
-          const current = await this.reservations.findById(r.id);
-          if (!current) continue;
-          if (current.state === ReservationState.ACTIVE && current.expiresAt <= this.clock.now()) {
-            const updated = withState(current, ReservationState.EXPIRED, this.clock.now());
-            await this.reservations.save(updated);
-            result.push(updated);
-          }
-        }
-        return result;
-      });
-      expired.push(...swept);
-    }
-    return expired;
-  }
-
-  private async transition(
+  const transition = async (
     reservationId: string,
     target: ReservationState.CONFIRMED | ReservationState.CANCELLED,
     verb: 'confirm' | 'cancel',
-  ): Promise<Reservation> {
-    // Fetch outside the lock only to discover the productId to lock on.
-    // All state decisions are re-read inside the lock below.
-    const preview = await this.reservations.findById(reservationId);
+  ): Promise<Reservation> => {
+    // One lookup outside the lock to find the productId to lock on. All state
+    // decisions are re-read inside the lock below.
+    const preview = await reservations.findById(reservationId);
     if (!preview) throw new ReservationNotFoundError(reservationId);
 
-    return this.mutex.runExclusive(preview.productId, async () => {
-      const current = await this.reservations.findById(reservationId);
+    return locker.withLock(preview.productId, async () => {
+      const current = await reservations.findById(reservationId);
       if (!current) throw new ReservationNotFoundError(reservationId);
 
-      const now = this.clock.now();
+      const now = clock.now();
       const observed = effectiveState(current, now);
-
       if (observed !== ReservationState.ACTIVE) {
-        // Persist the observed EXPIRED state if we noticed it here, so the
-        // stored state matches what the caller was told.
         if (observed === ReservationState.EXPIRED && current.state === ReservationState.ACTIVE) {
-          await this.reservations.save(withState(current, ReservationState.EXPIRED, now));
+          await reservations.save(withState(current, ReservationState.EXPIRED, now));
         }
         throw new InvalidReservationStateError(observed, verb);
       }
 
       const updated = withState(current, target, now);
-      await this.reservations.save(updated);
+      await reservations.save(updated);
       return updated;
     });
-  }
+  };
 
-  private snapshot(product: Product, reservations: Reservation[]): AvailabilitySnapshot {
-    const now = this.clock.now();
-    let activeQty = 0;
-    let confirmedQty = 0;
-    for (const r of reservations) {
-      const state = effectiveState(r, now);
-      if (state === ReservationState.ACTIVE) activeQty += r.quantity;
-      else if (state === ReservationState.CONFIRMED) confirmedQty += r.quantity;
-    }
-    const availableStock = Math.max(0, product.totalStock - activeQty - confirmedQty);
-    return {
-      productId: product.id,
-      totalStock: product.totalStock,
-      activeReservations: activeQty,
-      confirmedSales: confirmedQty,
-      availableStock,
-    };
-  }
+  return {
+    getAvailability: (productId) =>
+      locker.withLock(productId, async () => {
+        const product = await requireProduct(productId);
+        const records = await reservations.findByProductId(productId);
+        return computeAvailability(product, records, clock.now());
+      }),
 
-  private async requireProduct(productId: string): Promise<Product> {
-    const product = await this.products.findById(productId);
-    if (!product) throw new ProductNotFoundError(productId);
-    return product;
-  }
-}
+    reserve: async (input) => {
+      if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
+        throw new InvalidQuantityError(input.quantity);
+      }
+      return locker.withLock(input.productId, async () => {
+        const product = await requireProduct(input.productId);
+        const records = await reservations.findByProductId(input.productId);
+        const view = computeAvailability(product, records, clock.now());
+        if (view.availableStock < input.quantity) {
+          throw new InsufficientStockError(view.availableStock, input.quantity);
+        }
+        const now = clock.now();
+        const reservation: Reservation = {
+          id: randomUUID(),
+          productId: input.productId,
+          userId: input.userId,
+          quantity: input.quantity,
+          state: ReservationState.ACTIVE,
+          createdAt: now,
+          updatedAt: now,
+          expiresAt: now + holdDurationMs,
+        };
+        await reservations.save(reservation);
+        return reservation;
+      });
+    },
+
+    confirm: (id) => transition(id, ReservationState.CONFIRMED, 'confirm'),
+    cancel: (id) => transition(id, ReservationState.CANCELLED, 'cancel'),
+
+    sweepExpired: async () => {
+      const now = clock.now();
+      const all = await reservations.all();
+      const byProduct = new Map<string, Reservation[]>();
+      for (const r of all) {
+        if (r.state === ReservationState.ACTIVE && r.expiresAt <= now) {
+          (byProduct.get(r.productId) ?? byProduct.set(r.productId, []).get(r.productId)!).push(r);
+        }
+      }
+
+      const perProduct = await Promise.all(
+        Array.from(byProduct, ([productId, bucket]) =>
+          locker.withLock(productId, async () => {
+            const out: Reservation[] = [];
+            for (const r of bucket) {
+              const current = await reservations.findById(r.id);
+              if (!current) continue;
+              if (current.state === ReservationState.ACTIVE && current.expiresAt <= clock.now()) {
+                const updated = withState(current, ReservationState.EXPIRED, clock.now());
+                await reservations.save(updated);
+                out.push(updated);
+              }
+            }
+            return out;
+          }),
+        ),
+      );
+      return perProduct.flat();
+    },
+  };
+};
