@@ -4,6 +4,7 @@ import type { InventoryService } from '../services/InventoryService.js';
 import type { ProductRepository } from '../repositories/ProductRepository.js';
 import { createProduct } from '../domain/Product.js';
 import { toHttpError } from './errorMapping.js';
+import { HttpErrorCode, HttpStatus } from './httpStatus.js';
 
 const reserveSchema = z
   .object({
@@ -36,7 +37,7 @@ export function buildRouter(deps: RouteDependencies): Router {
     try {
       const product = createProduct(parsed.data);
       await products.save(product);
-      res.status(201).json(product);
+      res.status(HttpStatus.CREATED).json(product);
     } catch (err) {
       const { status, body } = toHttpError(err);
       res.status(status).json(body);
@@ -46,7 +47,7 @@ export function buildRouter(deps: RouteDependencies): Router {
   router.get('/products/:id/availability', async (req: Request, res: Response) => {
     try {
       const snapshot = await service.getAvailability(req.params.id!);
-      res.json(snapshot);
+      res.status(HttpStatus.OK).json(snapshot);
     } catch (err) {
       const { status, body } = toHttpError(err);
       res.status(status).json(body);
@@ -58,7 +59,7 @@ export function buildRouter(deps: RouteDependencies): Router {
     if (!parsed.success) return badRequest(res, parsed.error.message);
     try {
       const reservation = await service.reserve(parsed.data);
-      res.status(201).json(reservation);
+      res.status(HttpStatus.CREATED).json(reservation);
     } catch (err) {
       const { status, body } = toHttpError(err);
       res.status(status).json(body);
@@ -68,7 +69,7 @@ export function buildRouter(deps: RouteDependencies): Router {
   router.post('/reservations/:id/confirm', async (req: Request, res: Response) => {
     try {
       const reservation = await service.confirm(req.params.id!);
-      res.json(reservation);
+      res.status(HttpStatus.OK).json(reservation);
     } catch (err) {
       const { status, body } = toHttpError(err);
       res.status(status).json(body);
@@ -78,7 +79,7 @@ export function buildRouter(deps: RouteDependencies): Router {
   router.post('/reservations/:id/cancel', async (req: Request, res: Response) => {
     try {
       const reservation = await service.cancel(req.params.id!);
-      res.json(reservation);
+      res.status(HttpStatus.OK).json(reservation);
     } catch (err) {
       const { status, body } = toHttpError(err);
       res.status(status).json(body);
@@ -89,5 +90,7 @@ export function buildRouter(deps: RouteDependencies): Router {
 }
 
 function badRequest(res: Response, message: string): void {
-  res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } });
+  res
+    .status(HttpStatus.BAD_REQUEST)
+    .json({ error: { code: HttpErrorCode.VALIDATION_ERROR, message } });
 }

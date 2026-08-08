@@ -1,7 +1,17 @@
-export class DomainError extends Error {
-  public readonly code: string;
+export const ErrorCode = {
+  PRODUCT_NOT_FOUND: 'PRODUCT_NOT_FOUND',
+  RESERVATION_NOT_FOUND: 'RESERVATION_NOT_FOUND',
+  INSUFFICIENT_STOCK: 'INSUFFICIENT_STOCK',
+  INVALID_RESERVATION_STATE: 'INVALID_RESERVATION_STATE',
+  INVALID_QUANTITY: 'INVALID_QUANTITY',
+} as const;
 
-  constructor(code: string, message: string) {
+export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
+
+export class DomainError extends Error {
+  public readonly code: ErrorCode;
+
+  constructor(code: ErrorCode, message: string) {
     super(message);
     this.name = new.target.name;
     this.code = code;
@@ -10,20 +20,20 @@ export class DomainError extends Error {
 
 export class ProductNotFoundError extends DomainError {
   constructor(productId: string) {
-    super('PRODUCT_NOT_FOUND', `Product not found: ${productId}`);
+    super(ErrorCode.PRODUCT_NOT_FOUND, `Product not found: ${productId}`);
   }
 }
 
 export class ReservationNotFoundError extends DomainError {
   constructor(reservationId: string) {
-    super('RESERVATION_NOT_FOUND', `Reservation not found: ${reservationId}`);
+    super(ErrorCode.RESERVATION_NOT_FOUND, `Reservation not found: ${reservationId}`);
   }
 }
 
 export class InsufficientStockError extends DomainError {
   constructor(available: number, requested: number) {
     super(
-      'INSUFFICIENT_STOCK',
+      ErrorCode.INSUFFICIENT_STOCK,
       `Insufficient stock: requested ${requested}, only ${available} available`,
     );
   }
@@ -32,7 +42,7 @@ export class InsufficientStockError extends DomainError {
 export class InvalidReservationStateError extends DomainError {
   constructor(currentState: string, attempted: string) {
     super(
-      'INVALID_RESERVATION_STATE',
+      ErrorCode.INVALID_RESERVATION_STATE,
       `Cannot ${attempted} a reservation in state ${currentState}`,
     );
   }
@@ -40,6 +50,6 @@ export class InvalidReservationStateError extends DomainError {
 
 export class InvalidQuantityError extends DomainError {
   constructor(quantity: number) {
-    super('INVALID_QUANTITY', `Quantity must be a positive integer, got ${quantity}`);
+    super(ErrorCode.INVALID_QUANTITY, `Quantity must be a positive integer, got ${quantity}`);
   }
 }
