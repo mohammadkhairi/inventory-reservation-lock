@@ -1,6 +1,13 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import {
+  DB_CLOSE_TIMEOUT_S,
+  DEFAULT_DB_CONNECT_TIMEOUT_S,
+  DEFAULT_DB_IDLE_TIMEOUT_S,
+  DEFAULT_DB_MAX_LIFETIME_S,
+  DEFAULT_DB_POOL_MAX,
+} from '../config/constants.js';
 import * as schema from './schema/index.js';
 
 export type Database = PostgresJsDatabase<typeof schema>;
@@ -41,10 +48,10 @@ const txStore = new AsyncLocalStorage<Database>();
 export function initDatabase(url: string, opts: DatabasePoolOptions = {}): DatabaseHandle {
   if (handle) return handle;
   const client = postgres(url, {
-    max: opts.maxConnections ?? 10,
-    idle_timeout: opts.idleTimeoutSeconds ?? 30,
-    max_lifetime: opts.maxLifetimeSeconds ?? 60 * 30,
-    connect_timeout: opts.connectTimeoutSeconds ?? 5,
+    max: opts.maxConnections ?? DEFAULT_DB_POOL_MAX,
+    idle_timeout: opts.idleTimeoutSeconds ?? DEFAULT_DB_IDLE_TIMEOUT_S,
+    max_lifetime: opts.maxLifetimeSeconds ?? DEFAULT_DB_MAX_LIFETIME_S,
+    connect_timeout: opts.connectTimeoutSeconds ?? DEFAULT_DB_CONNECT_TIMEOUT_S,
   });
   const drizzleDb = drizzle(client, { schema });
   handle = {
@@ -53,7 +60,7 @@ export function initDatabase(url: string, opts: DatabasePoolOptions = {}): Datab
     close: async () => {
       const current = handle;
       handle = null;
-      if (current) await current.client.end({ timeout: 5 });
+      if (current) await current.client.end({ timeout: DB_CLOSE_TIMEOUT_S });
     },
   };
   return handle;

@@ -1,31 +1,30 @@
 import { z } from 'zod';
+import {
+  DEFAULT_DB_CONNECT_TIMEOUT_S,
+  DEFAULT_DB_IDLE_TIMEOUT_S,
+  DEFAULT_DB_MAX_LIFETIME_S,
+  DEFAULT_DB_POOL_MAX,
+  DEFAULT_HTTP_PORT,
+  DEFAULT_SWEEPER_INTERVAL_MS,
+} from './constants.js';
 
 const optional = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), schema);
 
 const envSchema = z.object({
-  PORT: optional(z.coerce.number().int().positive().default(3000)),
+  PORT: optional(z.coerce.number().int().positive().default(DEFAULT_HTTP_PORT)),
   LOG_LEVEL: optional(z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info')),
   NODE_ENV: optional(z.enum(['development', 'production', 'test']).default('development')),
 
   DATABASE_URL: z.string().url(),
 
-  // Connection pool sizing.
-  // max: hard cap on concurrent connections; keep well under Postgres `max_connections`
-  //   accounting for every replica of the API. Default 10.
-  // idle_timeout: seconds of inactivity before a pool connection is closed. Prevents
-  //   leaking idle sockets during quiet periods. Default 30s.
-  // max_lifetime: seconds after which a connection is recycled regardless of health.
-  //   Guards against long-lived socket weirdness (dead peers, mid-box NAT resets).
-  //   Default 30 min.
-  // connect_timeout: seconds to wait for a new connection before erroring. Default 5s
-  //   — fail fast during outages rather than piling up requests.
-  DB_POOL_MAX: optional(z.coerce.number().int().positive().default(10)),
-  DB_IDLE_TIMEOUT_S: optional(z.coerce.number().int().nonnegative().default(30)),
-  DB_MAX_LIFETIME_S: optional(z.coerce.number().int().nonnegative().default(60 * 30)),
-  DB_CONNECT_TIMEOUT_S: optional(z.coerce.number().int().positive().default(5)),
+  // Pool sizing. See src/config/constants.ts for defaults + rationale.
+  DB_POOL_MAX: optional(z.coerce.number().int().positive().default(DEFAULT_DB_POOL_MAX)),
+  DB_IDLE_TIMEOUT_S: optional(z.coerce.number().int().nonnegative().default(DEFAULT_DB_IDLE_TIMEOUT_S)),
+  DB_MAX_LIFETIME_S: optional(z.coerce.number().int().nonnegative().default(DEFAULT_DB_MAX_LIFETIME_S)),
+  DB_CONNECT_TIMEOUT_S: optional(z.coerce.number().int().positive().default(DEFAULT_DB_CONNECT_TIMEOUT_S)),
 
-  SWEEPER_INTERVAL_MS: optional(z.coerce.number().int().positive().default(30_000)),
+  SWEEPER_INTERVAL_MS: optional(z.coerce.number().int().positive().default(DEFAULT_SWEEPER_INTERVAL_MS)),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,9 +1,11 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import { makeHarness, truncateAll } from './helpers.js';
+import { DEFAULT_HOLD_DURATION_MS } from '../src/config/constants.js';
 import { InvalidReservationStateError, ReservationNotFoundError } from '../src/domain/errors.js';
 import { ReservationState } from '../src/domain/reservation.js';
 
-const TWO_MINUTES = 2 * 60 * 1000;
+const HOLD_MS = DEFAULT_HOLD_DURATION_MS;
+const JUST_PAST_EXPIRY_MS = HOLD_MS + 1;
 
 describe('InventoryService — lifecycle (confirm / cancel / expiry)', () => {
   beforeEach(truncateAll);
@@ -35,13 +37,13 @@ describe('InventoryService — lifecycle (confirm / cancel / expiry)', () => {
   });
 
   it('auto-releases stock once the 2-minute hold elapses (lazy)', async () => {
-    const h = makeHarness({ holdDurationMs: TWO_MINUTES });
+    const h = makeHarness({ holdDurationMs: HOLD_MS });
     await h.seedProduct('sku', 1);
 
     await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
     expect((await h.service.getAvailability('sku')).availableStock).toBe(0);
 
-    h.clock.advance(TWO_MINUTES + 1);
+    h.clock.advance(JUST_PAST_EXPIRY_MS);
 
     const snapshot = await h.service.getAvailability('sku');
     expect(snapshot.availableStock).toBe(1);
@@ -49,24 +51,24 @@ describe('InventoryService — lifecycle (confirm / cancel / expiry)', () => {
   });
 
   it('allows a new reservation after an expired hold', async () => {
-    const h = makeHarness({ holdDurationMs: TWO_MINUTES });
+    const h = makeHarness({ holdDurationMs: HOLD_MS });
     await h.seedProduct('sku', 1);
     await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
 
-    h.clock.advance(TWO_MINUTES + 1);
+    h.clock.advance(JUST_PAST_EXPIRY_MS);
 
     const next = await h.service.reserve({ productId: 'sku', userId: 'B', quantity: 1 });
     expect(next.state).toBe(ReservationState.ACTIVE);
   });
 
   it('sweepExpired persists ACTIVE → EXPIRED transitions', async () => {
-    const h = makeHarness({ holdDurationMs: TWO_MINUTES });
+    const h = makeHarness({ holdDurationMs: HOLD_MS });
     await h.seedProduct('sku', 3);
 
     const r1 = await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
     const r2 = await h.service.reserve({ productId: 'sku', userId: 'B', quantity: 1 });
 
-    h.clock.advance(TWO_MINUTES + 1);
+    h.clock.advance(JUST_PAST_EXPIRY_MS);
     const expired = await h.service.sweepExpired();
 
     expect(expired.map((r) => r.id).sort()).toEqual([r1.id, r2.id].sort());
@@ -77,11 +79,11 @@ describe('InventoryService — lifecycle (confirm / cancel / expiry)', () => {
   });
 
   it('rejects confirming an EXPIRED reservation', async () => {
-    const h = makeHarness({ holdDurationMs: TWO_MINUTES });
+    const h = makeHarness({ holdDurationMs: HOLD_MS });
     await h.seedProduct('sku', 1);
 
     const r = await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
-    h.clock.advance(TWO_MINUTES + 1);
+    h.clock.advance(JUST_PAST_EXPIRY_MS);
 
     await expect(h.service.confirm(r.id)).rejects.toBeInstanceOf(InvalidReservationStateError);
   });

@@ -16,6 +16,10 @@ import {
   type InventoryService,
 } from '../src/services/inventoryService.js';
 
+/** Fixed epoch used as the ManualClock start in tests. Any stable value works;
+ * fixing it keeps time-based assertions deterministic. 2023-11-14T22:13:20Z. */
+const TEST_EPOCH_MS = 1_700_000_000_000;
+
 export interface TestHarness {
   service: InventoryService;
   clock: ManualClockType;
@@ -30,7 +34,7 @@ export async function truncateAll(): Promise<void> {
 }
 
 export function makeHarness(options: { holdDurationMs?: number } = {}): TestHarness {
-  const clock = ManualClock(1_700_000_000_000);
+  const clock = ManualClock(TEST_EPOCH_MS);
   const products = productRepository();
   const reservations = reservationRepository();
   const service = createInventoryService({
