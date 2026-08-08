@@ -7,51 +7,41 @@ import {
 } from '../db/schema/reservation.js';
 import type { Reservation, ReservationState } from '../domain/reservation.js';
 
+/**
+ * Shape a caller can hold as a `reservations` value.
+ * `import * as reservations from './reservationRepository.js'` satisfies this.
+ */
 export interface ReservationRepository {
   findById(id: string): Promise<Reservation | null>;
   findByProductId(productId: string): Promise<Reservation[]>;
   save(reservation: Reservation): Promise<void>;
-  all(): Promise<Reservation[]>;
 }
 
 /** DB row → domain. The pgEnum guarantees `state` is a valid ReservationState. */
-const toDomain = (row: ReservationSelect): Reservation => ({
-  ...row,
-  state: row.state as ReservationState,
-});
+function toDomain(row: ReservationSelect): Reservation {
+  return { ...row, state: row.state as ReservationState };
+}
 
-/**
- * Factory. Closes over the module-level `db()` helper — when called inside a
- * `locker.withLock` critical section, `db()` returns the current transaction
- * (via AsyncLocalStorage) so writes participate in the advisory-locked tx.
- */
-export const reservationRepository = (): ReservationRepository => ({
-  async findById(id) {
-    const [row] = await db().select().from(reservations).where(eq(reservations.id, id)).limit(1);
-    return row ? toDomain(row) : null;
-  },
+export async function findById(id: string): Promise<Reservation | null> {
+  const [row] = await db().select().from(reservations).where(eq(reservations.id, id)).limit(1);
+  return row ? toDomain(row) : null;
+}
 
-  async findByProductId(productId) {
-    const rows = await db()
-      .select()
-      .from(reservations)
-      .where(eq(reservations.productId, productId));
-    return rows.map(toDomain);
-  },
+export async function findByProductId(productId: string): Promise<Reservation[]> {
+  const rows = await db()
+    .select()
+    .from(reservations)
+    .where(eq(reservations.productId, productId));
+  return rows.map(toDomain);
+}
 
-  async save(reservation) {
-    const value = reservationInsertSchema.parse(reservation);
-    await db()
-      .insert(reservations)
-      .values(value)
-      .onConflictDoUpdate({
-        target: reservations.id,
-        set: { state: value.state, updatedAt: value.updatedAt, expiresAt: value.expiresAt },
-      });
-  },
-
-  async all() {
-    const rows = await db().select().from(reservations);
-    return rows.map(toDomain);
-  },
-});
+export async function save(reservation: Reservation): Promise<void> {
+  const value = reservationInsertSchema.parse(reservation);
+  await db()
+    .insert(reservations)
+    .values(value)
+    .onConflictDoUpdate({
+      target: reservations.id,
+      set: { state: value.state, updatedAt: value.updatedAt, expiresAt: value.expiresAt },
+    });
+}

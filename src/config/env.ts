@@ -5,7 +5,6 @@ import {
   DEFAULT_DB_MAX_LIFETIME_S,
   DEFAULT_DB_POOL_MAX,
   DEFAULT_HTTP_PORT,
-  DEFAULT_SWEEPER_INTERVAL_MS,
 } from './constants.js';
 
 const optional = <T extends z.ZodTypeAny>(schema: T) =>
@@ -23,8 +22,6 @@ const envSchema = z.object({
   DB_IDLE_TIMEOUT_S: optional(z.coerce.number().int().nonnegative().default(DEFAULT_DB_IDLE_TIMEOUT_S)),
   DB_MAX_LIFETIME_S: optional(z.coerce.number().int().nonnegative().default(DEFAULT_DB_MAX_LIFETIME_S)),
   DB_CONNECT_TIMEOUT_S: optional(z.coerce.number().int().positive().default(DEFAULT_DB_CONNECT_TIMEOUT_S)),
-
-  SWEEPER_INTERVAL_MS: optional(z.coerce.number().int().positive().default(DEFAULT_SWEEPER_INTERVAL_MS)),
 });
 
 export type Env = z.infer<typeof envSchema>;

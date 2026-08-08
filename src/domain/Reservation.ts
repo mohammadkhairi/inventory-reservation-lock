@@ -31,9 +31,8 @@ export function withState(r: Reservation, state: ReservationState, now: number):
 }
 
 /**
- * An ACTIVE reservation past its `expiresAt` counts as EXPIRED for availability
- * even before the sweeper materializes the transition — so a stalled sweeper can
- * never cause a phantom hold.
+ * An ACTIVE reservation past its `expiresAt` counts as EXPIRED for availability.
+ * The persisted state may still read ACTIVE — availability doesn't care.
  */
 export function effectiveState(r: Reservation, now: number): ReservationState {
   if (r.state === ReservationState.ACTIVE && r.expiresAt <= now) {

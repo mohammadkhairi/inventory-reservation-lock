@@ -1,25 +1,26 @@
 import { Router } from 'express';
-import type { ReservationController } from '../controllers/reservationController.js';
+import * as reservationController from '../controllers/reservationController.js';
+import type { ReservationControllerDeps } from '../controllers/reservationController.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validate } from '../middleware/validate.js';
 import { reservationIdParams, reserveBody } from '../schemas/reservation.js';
 
-export const reservationRoutes = (controller: ReservationController): Router => {
+export function reservationRoutes(deps: ReservationControllerDeps): Router {
   const router = Router();
   router.post(
     '/',
     validate({ body: reserveBody }),
-    asyncHandler((req, res) => controller.reserve(req, res)),
+    asyncHandler(reservationController.reserve(deps)),
   );
   router.post(
     '/:id/confirm',
     validate({ params: reservationIdParams }),
-    asyncHandler((req, res) => controller.confirm(req, res)),
+    asyncHandler(reservationController.confirm(deps)),
   );
   router.post(
     '/:id/cancel',
     validate({ params: reservationIdParams }),
-    asyncHandler((req, res) => controller.cancel(req, res)),
+    asyncHandler(reservationController.cancel(deps)),
   );
   return router;
-};
+}

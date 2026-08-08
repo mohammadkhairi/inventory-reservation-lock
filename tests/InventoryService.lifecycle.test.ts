@@ -61,23 +61,6 @@ describe('InventoryService — lifecycle (confirm / cancel / expiry)', () => {
     expect(next.state).toBe(ReservationState.ACTIVE);
   });
 
-  it('sweepExpired persists ACTIVE → EXPIRED transitions', async () => {
-    const h = makeHarness({ holdDurationMs: HOLD_MS });
-    await h.seedProduct('sku', 3);
-
-    const r1 = await h.service.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
-    const r2 = await h.service.reserve({ productId: 'sku', userId: 'B', quantity: 1 });
-
-    h.clock.advance(JUST_PAST_EXPIRY_MS);
-    const expired = await h.service.sweepExpired();
-
-    expect(expired.map((r) => r.id).sort()).toEqual([r1.id, r2.id].sort());
-    const persisted1 = await h.reservations.findById(r1.id);
-    const persisted2 = await h.reservations.findById(r2.id);
-    expect(persisted1?.state).toBe(ReservationState.EXPIRED);
-    expect(persisted2?.state).toBe(ReservationState.EXPIRED);
-  });
-
   it('rejects confirming an EXPIRED reservation', async () => {
     const h = makeHarness({ holdDurationMs: HOLD_MS });
     await h.seedProduct('sku', 1);
