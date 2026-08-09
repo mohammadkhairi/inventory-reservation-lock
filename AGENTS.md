@@ -138,7 +138,8 @@ composition, there's a natural home.
 ### Routes — validate → extract → call controller → sendJson
 
 ```ts
-router.post('/',
+router.post(
+  '/',
   validate({ body: reserveBody }),
   asyncHandler(async (req, res) => {
     const reservation = await reservationController.reserve(req.body as ReserveBody);
@@ -148,6 +149,7 @@ router.post('/',
 ```
 
 Routes:
+
 1. Attach `validate({ body?, params?, query? })` middleware (zod schemas from `src/request/`).
 2. In the handler, cast `req.body` / `req.params` to the schema-inferred type — trust the middleware.
 3. Call the controller.

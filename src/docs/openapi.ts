@@ -4,14 +4,8 @@ import {
   extendZodWithOpenApi,
 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
-import {
-  createProductBody,
-  productIdParams,
-} from '../request/product.js';
-import {
-  reservationIdParams,
-  reserveBody,
-} from '../request/reservation.js';
+import { createProductBody, productIdParams } from '../request/product.js';
+import { reservationIdParams, reserveBody } from '../request/reservation.js';
 import { availabilityResponse, productResponse } from '../response/product.js';
 import { reservationResponse } from '../response/reservation.js';
 

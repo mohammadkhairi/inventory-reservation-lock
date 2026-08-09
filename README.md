@@ -137,7 +137,7 @@ regardless of what's persisted.
   flakiness.
 - No background sweeper. If persisted state is ever needed for reporting, a
   scheduled `UPDATE reservations SET state='EXPIRED' WHERE state='ACTIVE' AND
-  expires_at <= now` is enough (no service call, no locks).
+expires_at <= now` is enough (no service call, no locks).
 
 ---
 
@@ -195,15 +195,15 @@ reviewers, wait timers).
 All errors return `{ "error": { "code": string, "message": string } }` with a
 consistent code taxonomy from `src/errors.ts`:
 
-| Code | Status | Cause |
-| --- | --- | --- |
-| `VALIDATION_ERROR` | 400 | Zod parse failure on request |
-| `INVALID_QUANTITY` | 400 | Non-positive-integer quantity |
-| `PRODUCT_NOT_FOUND` | 404 | Unknown productId |
-| `RESERVATION_NOT_FOUND` | 404 | Unknown reservationId |
-| `INSUFFICIENT_STOCK` | 409 | Requested > available |
-| `INVALID_RESERVATION_STATE` | 409 | e.g. confirm on CONFIRMED |
-| `INTERNAL_ERROR` | 500 | Unhandled / response validation failure |
+| Code                        | Status | Cause                                   |
+| --------------------------- | ------ | --------------------------------------- |
+| `VALIDATION_ERROR`          | 400    | Zod parse failure on request            |
+| `INVALID_QUANTITY`          | 400    | Non-positive-integer quantity           |
+| `PRODUCT_NOT_FOUND`         | 404    | Unknown productId                       |
+| `RESERVATION_NOT_FOUND`     | 404    | Unknown reservationId                   |
+| `INSUFFICIENT_STOCK`        | 409    | Requested > available                   |
+| `INVALID_RESERVATION_STATE` | 409    | e.g. confirm on CONFIRMED               |
+| `INTERNAL_ERROR`            | 500    | Unhandled / response validation failure |
 
 ---
 

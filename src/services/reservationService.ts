@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
+
 import { DEFAULT_HOLD_DURATION_MS } from '../config/constants.js';
+import { ReservationState } from '../db/schema/reservation.js';
 import {
   InsufficientStockError,
   InvalidQuantityError,
@@ -10,7 +12,6 @@ import {
 import * as products from '../repositories/productRepository.js';
 import * as reservations from '../repositories/reservationRepository.js';
 import { computeAvailability, effectiveState, withState } from '../rules/reservationRules.js';
-import { ReservationState } from '../db/schema/reservation.js';
 import type { Reservation } from '../types/reservation.js';
 import { locker } from '../utils/locker.js';
 
@@ -32,17 +33,17 @@ export async function reserve(input: ReserveInput): Promise<Reservation> {
   return locker.withLock(input.productId, async () => {
     const product = await products.findById(input.productId);
     if (!product) throw new ProductNotFoundError(input.productId);
+
+    const now = Date.now();
     const records = await reservations.findByProductId(input.productId);
-    const view = computeAvailability(product, records, Date.now());
+    const view = computeAvailability(product, records, now);
     if (view.availableStock < input.quantity) {
       throw new InsufficientStockError(view.availableStock, input.quantity);
     }
-    const now = Date.now();
+
     const reservation: Reservation = {
+      ...input,
       id: randomUUID(),
-      productId: input.productId,
-      userId: input.userId,
-      quantity: input.quantity,
       state: ReservationState.ACTIVE,
       createdAt: now,
       updatedAt: now,
@@ -54,18 +55,19 @@ export async function reserve(input: ReserveInput): Promise<Reservation> {
 }
 
 export async function confirm(id: string): Promise<Reservation> {
-  return transition(id, ReservationState.CONFIRMED, 'confirm');
+  return transition(id, ReservationState.CONFIRMED);
 }
 
 export async function cancel(id: string): Promise<Reservation> {
-  return transition(id, ReservationState.CANCELLED, 'cancel');
+  return transition(id, ReservationState.CANCELLED);
 }
 
 async function transition(
   reservationId: string,
   target: typeof ReservationState.CONFIRMED | typeof ReservationState.CANCELLED,
-  verb: 'confirm' | 'cancel',
 ): Promise<Reservation> {
+  const verb = target.toLowerCase();
+
   // One lookup outside the lock to find the productId to lock on. All state
   // decisions are re-read inside the lock below.
   const preview = await reservations.findById(reservationId);

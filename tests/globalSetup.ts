@@ -11,8 +11,7 @@ import { runMigrations } from '../src/db/migrate.js';
  * TEST_DATABASE_URL overrides the default. The default assumes `npm run db:up`
  * has been run.
  */
-const DEFAULT_TEST_URL =
-  'postgres://postgres:postgres@localhost:55432/inventory_test';
+const DEFAULT_TEST_URL = 'postgres://postgres:postgres@localhost:55432/inventory_test';
 const ADMIN_URL = 'postgres://postgres:postgres@localhost:55432/postgres';
 
 export default async function setup(): Promise<() => Promise<void>> {

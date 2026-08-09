@@ -19,9 +19,15 @@ const envSchema = z.object({
 
   // Pool sizing. See src/config/constants.ts for defaults + rationale.
   DB_POOL_MAX: optional(z.coerce.number().int().positive().default(DEFAULT_DB_POOL_MAX)),
-  DB_IDLE_TIMEOUT_S: optional(z.coerce.number().int().nonnegative().default(DEFAULT_DB_IDLE_TIMEOUT_S)),
-  DB_MAX_LIFETIME_S: optional(z.coerce.number().int().nonnegative().default(DEFAULT_DB_MAX_LIFETIME_S)),
-  DB_CONNECT_TIMEOUT_S: optional(z.coerce.number().int().positive().default(DEFAULT_DB_CONNECT_TIMEOUT_S)),
+  DB_IDLE_TIMEOUT_S: optional(
+    z.coerce.number().int().nonnegative().default(DEFAULT_DB_IDLE_TIMEOUT_S),
+  ),
+  DB_MAX_LIFETIME_S: optional(
+    z.coerce.number().int().nonnegative().default(DEFAULT_DB_MAX_LIFETIME_S),
+  ),
+  DB_CONNECT_TIMEOUT_S: optional(
+    z.coerce.number().int().positive().default(DEFAULT_DB_CONNECT_TIMEOUT_S),
+  ),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -36,7 +42,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   if (cached) return cached;
   const parsed = envSchema.safeParse(source);
   if (!parsed.success) {
-    const lines = parsed.error.issues.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`);
+    const lines = parsed.error.issues.map(
+      (i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`,
+    );
     throw new Error(`Invalid environment configuration:\n${lines.join('\n')}`);
   }
   cached = parsed.data;

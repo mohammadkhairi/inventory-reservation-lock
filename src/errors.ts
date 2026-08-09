@@ -41,7 +41,10 @@ export class InsufficientStockError extends DomainError {
 
 export class InvalidReservationStateError extends DomainError {
   constructor(current: string, attempted: string) {
-    super(ErrorCode.INVALID_RESERVATION_STATE, `Cannot ${attempted} a reservation in state ${current}`);
+    super(
+      ErrorCode.INVALID_RESERVATION_STATE,
+      `Reservation cannot be ${attempted} while in state ${current}`,
+    );
   }
 }
 

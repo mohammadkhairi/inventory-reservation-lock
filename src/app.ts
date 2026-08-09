@@ -23,10 +23,17 @@ app.use(requestId);
 app.use(requestLogger);
 app.use(express.json());
 
-app.get('/health', asyncHandler(async (_req, res) => { res.json({ status: 'ok' }); }));
+app.get(
+  '/health',
+  asyncHandler(async (_req, res) => {
+    res.json({ status: 'ok' });
+  }),
+);
 
 // Swagger — interactive UI + raw spec.
-app.get('/docs.json', (_req, res) => { res.json(openApiDocument); });
+app.get('/docs.json', (_req, res) => {
+  res.json(openApiDocument);
+});
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
 
 app.use('/api', apiRoutes());

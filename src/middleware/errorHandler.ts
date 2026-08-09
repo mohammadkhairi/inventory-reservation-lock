@@ -21,12 +21,7 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
  * Zod errors    → 400 with a flattened message.
  * Anything else → 500, logged with stack.
  */
-export function errorHandler(
-  err: unknown,
-  req: Request,
-  res: Response,
-  _next: NextFunction,
-): void {
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
   if (err instanceof DomainError) {
     res.status(STATUS_BY_CODE[err.code]).json({ error: { code: err.code, message: err.message } });
     return;

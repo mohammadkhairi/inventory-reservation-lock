@@ -7,8 +7,7 @@ import { closeDatabase, initDatabase } from '../src/db/db.js';
  * `db()` returns a live client.
  */
 const url =
-  process.env.TEST_DATABASE_URL ??
-  'postgres://postgres:postgres@localhost:55432/inventory_test';
+  process.env.TEST_DATABASE_URL ?? 'postgres://postgres:postgres@localhost:55432/inventory_test';
 
 initDatabase(url);
 
