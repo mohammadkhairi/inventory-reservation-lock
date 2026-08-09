@@ -6,7 +6,6 @@ import { startServer } from './server.js';
 loadEnv();
 
 startServer().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error('failed to start server', err);
   process.exit(1);
 });
