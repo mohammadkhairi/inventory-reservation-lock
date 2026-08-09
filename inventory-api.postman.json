@@ -89,6 +89,19 @@
       "name": "Reservations",
       "item": [
         {
+          "name": "List reservations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservations"]
+            },
+            "description": "Returns every reservation regardless of state. No pagination — grows with total reservations."
+          }
+        },
+        {
           "name": "Reserve",
           "event": [
             {

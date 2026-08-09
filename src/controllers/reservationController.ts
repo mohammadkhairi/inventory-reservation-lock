@@ -13,3 +13,7 @@ export async function confirm(id: string): Promise<Reservation> {
 export async function cancel(id: string): Promise<Reservation> {
   return reservationService.cancel(id);
 }
+
+export async function list(): Promise<Reservation[]> {
+  return reservationService.list();
+}

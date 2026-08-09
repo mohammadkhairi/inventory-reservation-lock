@@ -85,6 +85,12 @@ export async function cancel(id: string): Promise<Reservation> {
   return transition({ reservationId: id, target: ReservationState.CANCELLED });
 }
 
+export async function list(): Promise<Reservation[]> {
+  const rows = await reservations.findAll();
+  log.debug({ count: rows.length }, 'listed reservations');
+  return rows;
+}
+
 async function transition(params: {
   reservationId: string;
   target: typeof ReservationState.CONFIRMED | typeof ReservationState.CANCELLED;

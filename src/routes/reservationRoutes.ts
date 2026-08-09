@@ -8,11 +8,19 @@ import {
   type ReservationIdParams,
   type ReserveBody,
 } from '../request/reservation.js';
-import { reservationResponse } from '../response/reservation.js';
+import { reservationListResponse, reservationResponse } from '../response/reservation.js';
 import { sendJson } from '../utils/http.js';
 
 export function reservationRoutes(): Router {
   const router = Router();
+
+  router.get(
+    '/',
+    asyncHandler(async (_req, res) => {
+      const list = await reservationController.list();
+      sendJson({ res, schema: reservationListResponse, body: list });
+    }),
+  );
 
   router.post(
     '/',

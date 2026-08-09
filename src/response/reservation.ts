@@ -11,3 +11,5 @@ export const reservationResponse = z.object({
   updatedAt: z.number().int(),
   expiresAt: z.number().int(),
 });
+
+export const reservationListResponse = z.array(reservationResponse);

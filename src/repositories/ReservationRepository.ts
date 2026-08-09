@@ -25,6 +25,11 @@ export async function findByProductId(productId: string): Promise<Reservation[]>
   return rows.map(toDomain);
 }
 
+export async function findAll(): Promise<Reservation[]> {
+  const rows = await db().query.reservations.findMany();
+  return rows.map(toDomain);
+}
+
 export async function save(reservation: Reservation): Promise<void> {
   const value = reservationInsertSchema.parse(reservation);
   await db()

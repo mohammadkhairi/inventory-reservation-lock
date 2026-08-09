@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { createProductBody, productIdParams } from '../request/product.js';
 import { reservationIdParams, reserveBody } from '../request/reservation.js';
 import { availabilityResponse, productListResponse, productResponse } from '../response/product.js';
-import { reservationResponse } from '../response/reservation.js';
+import { reservationListResponse, reservationResponse } from '../response/reservation.js';
 
 // Adds `.openapi()` to every zod schema (idempotent).
 extendZodWithOpenApi(z);
@@ -56,6 +56,16 @@ registry.registerPath({
   responses: {
     200: { description: 'Availability snapshot', ...jsonBody(availabilityResponse) },
     404: { description: 'Product not found' },
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/reservations',
+  tags: ['reservations'],
+  summary: 'List all reservations',
+  responses: {
+    200: { description: 'Reservations', ...jsonBody(reservationListResponse) },
   },
 });
 
