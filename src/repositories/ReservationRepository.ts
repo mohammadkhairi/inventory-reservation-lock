@@ -8,16 +8,6 @@ import {
 import type { ReservationState } from '../db/schema/reservation.js';
 import type { Reservation } from '../types/reservation.js';
 
-/**
- * Shape a caller can hold as a `reservations` value.
- * `import * as reservations from './reservationRepository.js'` satisfies this.
- */
-export interface ReservationRepository {
-  findById(id: string): Promise<Reservation | null>;
-  findByProductId(productId: string): Promise<Reservation[]>;
-  save(reservation: Reservation): Promise<void>;
-}
-
 /** DB row → domain. The pgEnum guarantees `state` is a valid ReservationState. */
 function toDomain(row: ReservationSelect): Reservation {
   return { ...row, state: row.state as ReservationState };

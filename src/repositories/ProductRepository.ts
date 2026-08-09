@@ -3,15 +3,6 @@ import { db } from '../db/db.js';
 import { productInsertSchema, products } from '../db/schema/product.js';
 import type { Product } from '../types/product.js';
 
-/**
- * Shape a caller can hold as a `products` value.
- * `import * as products from './productRepository.js'` satisfies this.
- */
-export interface ProductRepository {
-  findById(id: string): Promise<Product | null>;
-  save(product: Product): Promise<void>;
-}
-
 export async function findById(id: string): Promise<Product | null> {
   const row = await db().query.products.findFirst({ where: eq(products.id, id) });
   return row ?? null;
