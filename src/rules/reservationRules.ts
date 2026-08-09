@@ -1,4 +1,4 @@
-import { ReservationState } from '../db/schema/enums.js';
+import { ReservationState } from '../db/schema/reservation.js';
 import type { Product } from '../types/product.js';
 import type { AvailabilitySnapshot, Reservation } from '../types/reservation.js';
 

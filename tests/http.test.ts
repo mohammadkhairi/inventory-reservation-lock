@@ -1,7 +1,7 @@
 import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, it, expect } from 'vitest';
-import { ReservationState } from '../src/db/schema/enums.js';
+import { ReservationState } from '../src/db/schema/reservation.js';
 import { errorHandler } from '../src/middleware/errorHandler.js';
 import { apiRoutes } from '../src/routes/index.js';
 import { truncateAll } from './helpers.js';

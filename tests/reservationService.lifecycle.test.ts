@@ -4,7 +4,7 @@ import { DEFAULT_HOLD_DURATION_MS } from '../src/config/constants.js';
 import { InvalidReservationStateError, ReservationNotFoundError } from '../src/errors.js';
 import * as productService from '../src/services/productService.js';
 import * as reservationService from '../src/services/reservationService.js';
-import { ReservationState } from '../src/db/schema/enums.js';
+import { ReservationState } from '../src/db/schema/reservation.js';
 
 const JUST_PAST_EXPIRY_MS = DEFAULT_HOLD_DURATION_MS + 1;
 const TEST_START = new Date('2023-11-14T22:13:20Z');

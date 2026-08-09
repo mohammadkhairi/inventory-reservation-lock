@@ -5,7 +5,7 @@ import {
   reservations,
   type ReservationSelect,
 } from '../db/schema/reservation.js';
-import type { ReservationState } from '../db/schema/enums.js';
+import type { ReservationState } from '../db/schema/reservation.js';
 import type { Reservation } from '../types/reservation.js';
 
 /**
@@ -24,15 +24,14 @@ function toDomain(row: ReservationSelect): Reservation {
 }
 
 export async function findById(id: string): Promise<Reservation | null> {
-  const [row] = await db().select().from(reservations).where(eq(reservations.id, id)).limit(1);
+  const row = await db().query.reservations.findFirst({ where: eq(reservations.id, id) });
   return row ? toDomain(row) : null;
 }
 
 export async function findByProductId(productId: string): Promise<Reservation[]> {
-  const rows = await db()
-    .select()
-    .from(reservations)
-    .where(eq(reservations.productId, productId));
+  const rows = await db().query.reservations.findMany({
+    where: eq(reservations.productId, productId),
+  });
   return rows.map(toDomain);
 }
 

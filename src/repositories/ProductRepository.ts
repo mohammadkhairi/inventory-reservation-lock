@@ -13,7 +13,7 @@ export interface ProductRepository {
 }
 
 export async function findById(id: string): Promise<Product | null> {
-  const [row] = await db().select().from(products).where(eq(products.id, id)).limit(1);
+  const row = await db().query.products.findFirst({ where: eq(products.id, id) });
   return row ?? null;
 }
 

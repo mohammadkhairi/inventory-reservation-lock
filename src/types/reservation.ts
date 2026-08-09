@@ -1,4 +1,4 @@
-import type { ReservationState } from '../db/schema/enums.js';
+import type { ReservationState } from '../db/schema/reservation.js';
 
 export interface Reservation {
   readonly id: string;

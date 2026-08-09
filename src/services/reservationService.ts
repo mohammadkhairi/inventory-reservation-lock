@@ -10,7 +10,7 @@ import {
 import * as products from '../repositories/productRepository.js';
 import * as reservations from '../repositories/reservationRepository.js';
 import { computeAvailability, effectiveState, withState } from '../rules/reservationRules.js';
-import { ReservationState } from '../db/schema/enums.js';
+import { ReservationState } from '../db/schema/reservation.js';
 import type { Reservation } from '../types/reservation.js';
 import { locker } from '../utils/locker.js';
 

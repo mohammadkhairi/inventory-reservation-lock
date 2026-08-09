@@ -7,7 +7,7 @@ import {
 } from '../src/errors.js';
 import * as productService from '../src/services/productService.js';
 import * as reservationService from '../src/services/reservationService.js';
-import { ReservationState } from '../src/db/schema/enums.js';
+import { ReservationState } from '../src/db/schema/reservation.js';
 
 describe('reservationService — reserve', () => {
   beforeEach(truncateAll);

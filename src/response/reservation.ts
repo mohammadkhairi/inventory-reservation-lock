@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ReservationState } from '../db/schema/enums.js';
+import { ReservationState } from '../db/schema/reservation.js';
 
 export const reservationResponse = z.object({
   id: z.string(),

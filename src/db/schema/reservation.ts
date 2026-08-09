@@ -1,7 +1,23 @@
-import { bigint, index, integer, pgTable, text } from 'drizzle-orm/pg-core';
+import { bigint, index, integer, pgEnum, pgTable, text } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
-import { reservationStateEnum } from './enums.js';
 import { products } from './product.js';
+
+/**
+ * Reservation states — the pg enum (DB constraint) and the TS enum (app-side
+ * type) share the same string values. Colocated so they can never drift.
+ */
+const RESERVATION_STATES = ['ACTIVE', 'CONFIRMED', 'CANCELLED', 'EXPIRED'] as const;
+
+export const reservationStateEnum = pgEnum('reservation_state', RESERVATION_STATES);
+
+export const ReservationState = {
+  ACTIVE: 'ACTIVE',
+  CONFIRMED: 'CONFIRMED',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export type ReservationState = (typeof RESERVATION_STATES)[number];
 
 export const reservations = pgTable(
   'reservations',
