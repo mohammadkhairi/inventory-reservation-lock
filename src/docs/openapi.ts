@@ -6,7 +6,7 @@ import {
 import { z } from 'zod';
 import { createProductBody, productIdParams } from '../request/product.js';
 import { reservationIdParams, reserveBody } from '../request/reservation.js';
-import { availabilityResponse, productResponse } from '../response/product.js';
+import { availabilityResponse, productListResponse, productResponse } from '../response/product.js';
 import { reservationResponse } from '../response/reservation.js';
 
 // Adds `.openapi()` to every zod schema (idempotent).
@@ -23,6 +23,16 @@ registry.register('Reservation', reservationResponse);
 
 const jsonBody = <S extends z.ZodTypeAny>(schema: S) => ({
   content: { 'application/json': { schema } },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/products',
+  tags: ['products'],
+  summary: 'List all products',
+  responses: {
+    200: { description: 'Products', ...jsonBody(productListResponse) },
+  },
 });
 
 registry.registerPath({

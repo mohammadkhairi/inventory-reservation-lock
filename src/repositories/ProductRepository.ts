@@ -8,6 +8,10 @@ export async function findById(id: string): Promise<Product | null> {
   return row ?? null;
 }
 
+export async function findAll(): Promise<Product[]> {
+  return db().query.products.findMany();
+}
+
 export async function save(product: Product): Promise<void> {
   const value = productInsertSchema.parse(product);
   await db()

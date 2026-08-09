@@ -15,6 +15,12 @@ export async function create(product: Product): Promise<Product> {
   return product;
 }
 
+export async function list(): Promise<Product[]> {
+  const rows = await products.findAll();
+  log.debug({ count: rows.length }, 'listed products');
+  return rows;
+}
+
 export async function getAvailability(productId: string): Promise<AvailabilitySnapshot> {
   return locker.withLock(productId, async () => {
     const product = await products.findById(productId);

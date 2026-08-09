@@ -8,11 +8,19 @@ import {
   type CreateProductBody,
   type ProductIdParams,
 } from '../request/product.js';
-import { availabilityResponse, productResponse } from '../response/product.js';
+import { availabilityResponse, productListResponse, productResponse } from '../response/product.js';
 import { sendJson } from '../utils/http.js';
 
 export function productRoutes(): Router {
   const router = Router();
+
+  router.get(
+    '/',
+    asyncHandler(async (_req, res) => {
+      const list = await productController.list();
+      sendJson({ res, schema: productListResponse, body: list });
+    }),
+  );
 
   router.post(
     '/',

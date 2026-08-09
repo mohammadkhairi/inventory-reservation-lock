@@ -1,0 +1,217 @@
+{
+  "info": {
+    "name": "Inventory Reservation API",
+    "description": "Flash-sale-safe inventory reservation system. Postgres advisory locks + lazy expiry.\n\nDefaults assume the seeded products (`flash-sku`, `bulk-sku`, `tshirt`, `hoodie`). After a successful `POST /reservations`, the response's `id` is auto-saved to the `reservationId` variable so `Confirm` and `Cancel` requests can reuse it.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "reservationId", "value": "", "type": "string" },
+    { "key": "productId", "value": "tshirt", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] },
+            "description": "Liveness probe. Returns `{ status: 'ok' }` when the process is up."
+          }
+        },
+        {
+          "name": "OpenAPI Spec",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/docs.json",
+              "host": ["{{baseUrl}}"],
+              "path": ["docs.json"]
+            },
+            "description": "Raw OpenAPI 3.1 spec generated from the runtime zod schemas."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "List products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            },
+            "description": "Returns every product in the catalog (no pagination for now — pin size grows with catalog size)."
+          }
+        },
+        {
+          "name": "Create product",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"sku-new\",\n  \"name\": \"New SKU\",\n  \"totalStock\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            },
+            "description": "Upsert a product. Idempotent on `id` — subsequent calls with the same id update name + totalStock."
+          }
+        },
+        {
+          "name": "Get availability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}", "availability"]
+            },
+            "description": "Returns `{ productId, totalStock, activeReservations, confirmedSales, availableStock }`. Uses lazy expiry — ACTIVE reservations past `expiresAt` don't count against availability."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reservations",
+      "item": [
+        {
+          "name": "Reserve",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('reservationId', body.id);",
+                  "  console.log('Saved reservationId =', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"userId\": \"user-A\",\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservations"]
+            },
+            "description": "Creates a 2-minute ACTIVE hold. On success the response `id` is auto-saved to the collection's `reservationId` variable for the Confirm/Cancel requests below."
+          }
+        },
+        {
+          "name": "Confirm reservation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations/{{reservationId}}/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservations", "{{reservationId}}", "confirm"]
+            },
+            "description": "ACTIVE → CONFIRMED. Permanently consumes stock. Rejects if reservation is not ACTIVE (409 INVALID_RESERVATION_STATE) or unknown (404 RESERVATION_NOT_FOUND)."
+          }
+        },
+        {
+          "name": "Cancel reservation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations/{{reservationId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservations", "{{reservationId}}", "cancel"]
+            },
+            "description": "ACTIVE → CANCELLED. Releases stock. Same 4xx semantics as Confirm."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Scenarios",
+      "item": [
+        {
+          "name": "Oversell attempt (409)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"flash-sku\",\n  \"userId\": \"user-A\",\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservations"]
+            },
+            "description": "Requests 2 units of `flash-sku` which only stocks 1. Expected: 409 INSUFFICIENT_STOCK carrying { productId, available, requested } in the error body."
+          }
+        },
+        {
+          "name": "Missing product (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/does-not-exist/availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "does-not-exist", "availability"]
+            },
+            "description": "Expected: 404 PRODUCT_NOT_FOUND."
+          }
+        },
+        {
+          "name": "Validation error (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"\",\n  \"userId\": \"\",\n  \"quantity\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservations"]
+            },
+            "description": "Zod middleware rejects: empty productId, empty userId, non-positive quantity. Expected: 400 VALIDATION_ERROR listing each issue."
+          }
+        },
+        {
+          "name": "Unknown reservation (404)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations/does-not-exist/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservations", "does-not-exist", "confirm"]
+            },
+            "description": "Expected: 404 RESERVATION_NOT_FOUND."
+          }
+        }
+      ]
+    }
+  ]
+}
