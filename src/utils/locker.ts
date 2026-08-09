@@ -4,19 +4,12 @@ import { getDatabaseHandle, runInTransaction } from '../db/db.js';
 /**
  * "Give me exclusive access to `key` for the duration of `fn`."
  *
- * Postgres impl: opens a transaction, takes an xact-scoped advisory lock keyed
- * by `key`, sets the tx as current via AsyncLocalStorage so repositories inside
- * `fn` transparently use it via `db()`. Lock is released at COMMIT/ROLLBACK,
- * so a crashed process can never leak it.
- *
- * Interface kept so tests can swap it if needed and the service depends on the
- * abstraction, not the implementation.
+ * Opens a transaction, takes an xact-scoped advisory lock keyed by `key`, and
+ * sets the tx as current via AsyncLocalStorage so repositories inside `fn`
+ * transparently use it via `db()`. Lock is released at COMMIT/ROLLBACK, so a
+ * crashed process can never leak it.
  */
-export interface Locker {
-  withLock<T>(key: string, fn: () => Promise<T>): Promise<T>;
-}
-
-export const locker: Locker = {
+export const locker = {
   async withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
     const handle = getDatabaseHandle();
     if (!handle) throw new Error('Database not initialized. Call initDatabase() first.');

@@ -30,7 +30,7 @@ const envSchema = z.object({
   ),
 });
 
-export type Env = z.infer<typeof envSchema>;
+type Env = z.infer<typeof envSchema>;
 
 let cached: Env | null = null;
 
@@ -49,9 +49,4 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
   cached = parsed.data;
   return cached;
-}
-
-/** Test-only: forget the cached env so the next `loadEnv` re-parses. */
-export function __resetEnvForTests(): void {
-  cached = null;
 }

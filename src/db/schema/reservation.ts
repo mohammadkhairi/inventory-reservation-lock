@@ -1,5 +1,5 @@
 import { bigint, index, integer, pgEnum, pgTable, text } from 'drizzle-orm/pg-core';
-import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import { createInsertSchema } from 'drizzle-zod';
 import { products } from './product.js';
 
 /**
@@ -38,8 +38,6 @@ export const reservations = pgTable(
   }),
 );
 
-export type ReservationInsert = typeof reservations.$inferInsert;
 export type ReservationSelect = typeof reservations.$inferSelect;
 
 export const reservationInsertSchema = createInsertSchema(reservations);
-export const reservationSelectSchema = createSelectSchema(reservations);

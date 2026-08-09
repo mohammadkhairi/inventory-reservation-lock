@@ -1,4 +1,4 @@
-import { pino, type Logger as PinoLogger } from 'pino';
+import { pino, type Logger } from 'pino';
 import { loadEnv } from '../config/env.js';
 
 const env = loadEnv();
@@ -15,13 +15,11 @@ const base = pino({
       }),
 });
 
-export type Logger = PinoLogger;
-
 /**
  * Per-module logger factory. Every call returns a child logger with the
  * `context` field pre-attached so log lines carry their origin.
  *
- *   const log = createLogger('InventoryService');
+ *   const log = createLogger('reservationService');
  *   log.info({ productId }, 'reserved');
  *   log.error({ err }, 'reserve failed');
  */
