@@ -2,6 +2,10 @@ import 'dotenv/config';
 import { closeDatabase, initDatabase } from '../src/db/db.js';
 import * as products from '../src/repositories/productRepository.js';
 import type { Product } from '../src/types/product.js';
+import { runWithSession } from '../src/utils/logContext.js';
+import { createLogger } from '../src/utils/logger.js';
+
+const log = createLogger('seed-products');
 
 /**
  * Seeds a handful of products covering the flash-sale test scenarios:
@@ -21,18 +25,23 @@ const SEED_PRODUCTS: Product[] = [
 
 const url = process.env.DATABASE_URL;
 if (!url) {
-  // eslint-disable-next-line no-console
-  console.error('DATABASE_URL is required');
+  log.error('DATABASE_URL is required');
   process.exit(1);
 }
 
 initDatabase(url);
-try {
-  for (const product of SEED_PRODUCTS) {
-    await products.save(product);
-    // eslint-disable-next-line no-console
-    console.log(`seeded ${product.id} (stock=${product.totalStock})`);
+await runWithSession('seed-products', async () => {
+  try {
+    log.info({ count: SEED_PRODUCTS.length }, 'seeding products');
+    for (const product of SEED_PRODUCTS) {
+      await products.save(product);
+      log.info({ id: product.id, totalStock: product.totalStock }, 'seeded');
+    }
+    log.info('seed complete');
+  } catch (err) {
+    log.error({ err }, 'seed failed');
+    throw err;
+  } finally {
+    await closeDatabase();
   }
-} finally {
-  await closeDatabase();
-}
+});
