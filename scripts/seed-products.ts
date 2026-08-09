@@ -35,7 +35,7 @@ await runWithSession('seed-products', async () => {
     log.info({ count: SEED_PRODUCTS.length }, 'seeding products');
     for (const product of SEED_PRODUCTS) {
       await products.save(product);
-      log.info({ id: product.id, totalStock: product.totalStock }, 'seeded');
+      log.info({ productId: product.id, totalStock: product.totalStock }, 'seeded');
     }
     log.info('seed complete');
   } catch (err) {

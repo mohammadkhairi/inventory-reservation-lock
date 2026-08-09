@@ -10,7 +10,7 @@ import { locker } from '../utils/locker.js';
 const log = createLogger('productService');
 
 export async function create(product: Product): Promise<Product> {
-  log.info({ id: product.id, totalStock: product.totalStock }, 'creating product');
+  log.info({ productId: product.id, totalStock: product.totalStock }, 'creating product');
   await products.save(product);
   return product;
 }

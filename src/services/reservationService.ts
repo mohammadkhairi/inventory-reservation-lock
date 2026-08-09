@@ -57,6 +57,7 @@ export async function reserve(input: ReserveInput): Promise<Reservation> {
         'insufficient stock',
       );
       throw new InsufficientStockError({
+        productId: input.productId,
         available: view.availableStock,
         requested: input.quantity,
       });
@@ -111,7 +112,11 @@ async function transition(params: {
     const observed = effectiveState({ reservation: current, now });
     if (observed !== ReservationState.ACTIVE) {
       log.warn({ reservationId, observed, target }, 'invalid reservation state');
-      throw new InvalidReservationStateError({ current: observed, attempted: verb });
+      throw new InvalidReservationStateError({
+        reservationId,
+        current: observed,
+        attempted: verb,
+      });
     }
 
     const updated = withState({ reservation: current, state: target, now });
