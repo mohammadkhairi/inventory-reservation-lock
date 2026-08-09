@@ -1,39 +1,15 @@
-import type { Request, Response } from 'express';
-import {
-  reservationResponse,
-  type ReservationIdParams,
-  type ReserveBody,
-} from '../schemas/reservation.js';
-import * as inventoryService from '../services/inventoryService.js';
-import type { InventoryServiceDeps } from '../services/inventoryService.js';
-import { sendJson } from '../utils/http.js';
+import type { ReserveBody } from '../request/reservation.js';
+import * as reservationService from '../services/reservationService.js';
+import type { Reservation } from '../types/reservation.js';
 
-export interface ReservationControllerDeps {
-  service: InventoryServiceDeps;
+export async function reserve(body: ReserveBody): Promise<Reservation> {
+  return reservationService.reserve(body);
 }
 
-type Handler = (req: Request, res: Response) => Promise<void>;
-
-export function reserve(deps: ReservationControllerDeps): Handler {
-  return async (req, res) => {
-    const body = req.body as ReserveBody;
-    const reservation = await inventoryService.reserve(deps.service, body);
-    sendJson(res, reservationResponse, reservation, 201);
-  };
+export async function confirm(id: string): Promise<Reservation> {
+  return reservationService.confirm(id);
 }
 
-export function confirm(deps: ReservationControllerDeps): Handler {
-  return async (req, res) => {
-    const { id } = req.params as unknown as ReservationIdParams;
-    const reservation = await inventoryService.confirm(deps.service, id);
-    sendJson(res, reservationResponse, reservation);
-  };
-}
-
-export function cancel(deps: ReservationControllerDeps): Handler {
-  return async (req, res) => {
-    const { id } = req.params as unknown as ReservationIdParams;
-    const reservation = await inventoryService.cancel(deps.service, id);
-    sendJson(res, reservationResponse, reservation);
-  };
+export async function cancel(id: string): Promise<Reservation> {
+  return reservationService.cancel(id);
 }

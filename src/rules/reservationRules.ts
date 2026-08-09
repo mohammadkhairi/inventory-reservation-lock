@@ -1,34 +1,11 @@
-import type { Product } from './product.js';
+import { ReservationState } from '../db/schema/enums.js';
+import type { Product } from '../types/product.js';
+import type { AvailabilitySnapshot, Reservation } from '../types/reservation.js';
 
-export enum ReservationState {
-  ACTIVE = 'ACTIVE',
-  CONFIRMED = 'CONFIRMED',
-  CANCELLED = 'CANCELLED',
-  EXPIRED = 'EXPIRED',
-}
-
-export interface Reservation {
-  readonly id: string;
-  readonly productId: string;
-  readonly userId: string;
-  readonly quantity: number;
-  readonly state: ReservationState;
-  readonly createdAt: number;
-  readonly updatedAt: number;
-  readonly expiresAt: number;
-}
-
-export interface AvailabilitySnapshot {
-  productId: string;
-  totalStock: number;
-  activeReservations: number;
-  confirmedSales: number;
-  availableStock: number;
-}
-
-export function withState(r: Reservation, state: ReservationState, now: number): Reservation {
-  return { ...r, state, updatedAt: now };
-}
+/**
+ * Pure business rules. No I/O, no clock reads, no locks — every input is
+ * explicit. Freely reusable across services and testable in isolation.
+ */
 
 /**
  * An ACTIVE reservation past its `expiresAt` counts as EXPIRED for availability.
@@ -39,6 +16,10 @@ export function effectiveState(r: Reservation, now: number): ReservationState {
     return ReservationState.EXPIRED;
   }
   return r.state;
+}
+
+export function withState(r: Reservation, state: ReservationState, now: number): Reservation {
+  return { ...r, state, updatedAt: now };
 }
 
 export function computeAvailability(

@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
-import { DomainError, ErrorCode } from '../domain/errors.js';
+import { DomainError, ErrorCode } from '../errors.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('errorHandler');

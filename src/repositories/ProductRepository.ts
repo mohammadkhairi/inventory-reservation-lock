@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../db/db.js';
 import { productInsertSchema, products } from '../db/schema/product.js';
-import type { Product } from '../domain/product.js';
+import type { Product } from '../types/product.js';
 
 /**
  * Shape a caller can hold as a `products` value.

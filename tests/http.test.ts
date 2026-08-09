@@ -1,6 +1,7 @@
 import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, it, expect } from 'vitest';
+import { ReservationState } from '../src/db/schema/enums.js';
 import { errorHandler } from '../src/middleware/errorHandler.js';
 import { apiRoutes } from '../src/routes/index.js';
 import { truncateAll } from './helpers.js';
@@ -30,7 +31,7 @@ describe('HTTP API', () => {
       .post('/api/reservations')
       .send({ productId: 'sku-1', userId: 'user-A', quantity: 1 })
       .expect(201);
-    expect(reserved.body.state).toBe('ACTIVE');
+    expect(reserved.body.state).toBe(ReservationState.ACTIVE);
 
     await request(app).post(`/api/reservations/${reserved.body.id}/confirm`).expect(200);
 

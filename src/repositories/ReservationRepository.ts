@@ -5,7 +5,8 @@ import {
   reservations,
   type ReservationSelect,
 } from '../db/schema/reservation.js';
-import type { Reservation, ReservationState } from '../domain/reservation.js';
+import type { ReservationState } from '../db/schema/enums.js';
+import type { Reservation } from '../types/reservation.js';
 
 /**
  * Shape a caller can hold as a `reservations` value.

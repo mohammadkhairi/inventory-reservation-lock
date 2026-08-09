@@ -1,6 +1,8 @@
 import express, { type Express } from 'express';
+import swaggerUi from 'swagger-ui-express';
 import { loadEnv } from './config/env.js';
 import { initDatabase } from './db/db.js';
+import { openApiDocument } from './docs/openapi.js';
 import { asyncHandler } from './middleware/asyncHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId } from './middleware/requestId.js';
@@ -22,6 +24,11 @@ app.use(requestLogger);
 app.use(express.json());
 
 app.get('/health', asyncHandler(async (_req, res) => { res.json({ status: 'ok' }); }));
+
+// Swagger — interactive UI + raw spec.
+app.get('/docs.json', (_req, res) => { res.json(openApiDocument); });
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
+
 app.use('/api', apiRoutes());
 
 app.use(errorHandler);
