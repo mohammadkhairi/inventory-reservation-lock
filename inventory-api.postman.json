@@ -71,6 +71,23 @@
           }
         },
         {
+          "name": "Update product (partial)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"totalStock\": 20\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}"]
+            },
+            "description": "Partial update — pass `name`, `totalStock`, or both. Refuses to reduce `totalStock` below the sum of currently ACTIVE + CONFIRMED reservations (409 INSUFFICIENT_STOCK). Runs under the product's advisory lock so concurrent reservations can't slip past the invariant."
+          }
+        },
+        {
           "name": "Get availability",
           "request": {
             "method": "GET",

@@ -4,7 +4,7 @@ import {
   extendZodWithOpenApi,
 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
-import { createProductBody, productIdParams } from '../request/product.js';
+import { createProductBody, productIdParams, updateProductBody } from '../request/product.js';
 import { reservationIdParams, reserveBody } from '../request/reservation.js';
 import { availabilityResponse, productListResponse, productResponse } from '../response/product.js';
 import { reservationListResponse, reservationResponse } from '../response/reservation.js';
@@ -16,6 +16,7 @@ const registry = new OpenAPIRegistry();
 
 // Reusable schema components (kept in sync with the zod schemas via registry).
 registry.register('CreateProductBody', createProductBody);
+registry.register('UpdateProductBody', updateProductBody);
 registry.register('Product', productResponse);
 registry.register('Availability', availabilityResponse);
 registry.register('ReserveBody', reserveBody);
@@ -44,6 +45,20 @@ registry.registerPath({
   responses: {
     201: { description: 'Product created', ...jsonBody(productResponse) },
     400: { description: 'Validation error' },
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/products/{id}',
+  tags: ['products'],
+  summary: 'Partial update of a product (name and/or totalStock)',
+  request: { params: productIdParams, body: jsonBody(updateProductBody) },
+  responses: {
+    200: { description: 'Updated', ...jsonBody(productResponse) },
+    400: { description: 'Validation error (or nothing to update)' },
+    404: { description: 'Product not found' },
+    409: { description: 'Cannot reduce stock below currently reserved' },
   },
 });
 

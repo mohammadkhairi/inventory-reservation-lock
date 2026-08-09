@@ -5,8 +5,10 @@ import { validate } from '../middleware/validate.js';
 import {
   createProductBody,
   productIdParams,
+  updateProductBody,
   type CreateProductBody,
   type ProductIdParams,
+  type UpdateProductBody,
 } from '../request/product.js';
 import { availabilityResponse, productListResponse, productResponse } from '../response/product.js';
 import { sendJson } from '../utils/http.js';
@@ -28,6 +30,17 @@ export function productRoutes(): Router {
     asyncHandler(async (req, res) => {
       const product = await productController.create(req.body as CreateProductBody);
       sendJson({ res, schema: productResponse, body: product, status: 201 });
+    }),
+  );
+
+  router.patch(
+    '/:id',
+    validate({ params: productIdParams, body: updateProductBody }),
+    asyncHandler(async (req, res) => {
+      const { id } = req.params as unknown as ProductIdParams;
+      const patch = req.body as UpdateProductBody;
+      const updated = await productController.update({ productId: id, patch });
+      sendJson({ res, schema: productResponse, body: updated });
     }),
   );
 
