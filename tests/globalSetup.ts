@@ -30,7 +30,7 @@ export default async function setup(): Promise<() => Promise<void>> {
     await admin.end({ timeout: 5 });
   }
 
-  const handle = initDatabase(url);
+  const handle = initDatabase({ url });
   await runMigrations(handle.db);
 
   return async () => {

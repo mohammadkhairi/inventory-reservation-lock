@@ -7,12 +7,13 @@ import type { ZodTypeAny, z } from 'zod';
  * Error and lands on the 500 branch of `errorHandler` — not the 400 branch
  * reserved for bad *client* input.
  */
-export function sendJson<S extends ZodTypeAny>(
-  res: Response,
-  schema: S,
-  body: unknown,
-  status = 200,
-): void {
+export function sendJson<S extends ZodTypeAny>(params: {
+  res: Response;
+  schema: S;
+  body: unknown;
+  status?: number;
+}): void {
+  const { res, schema, body, status = 200 } = params;
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     const detail = parsed.error.issues

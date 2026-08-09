@@ -28,7 +28,7 @@ describe('reservationService — lifecycle (confirm / cancel / expiry)', () => {
   });
 
   it('transitions ACTIVE → CONFIRMED and permanently consumes stock', async () => {
-    await seedProduct('sku', 1);
+    await seedProduct({ id: 'sku', totalStock: 1 });
 
     const r = await reservationService.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
     const confirmed = await reservationService.confirm(r.id);
@@ -41,7 +41,7 @@ describe('reservationService — lifecycle (confirm / cancel / expiry)', () => {
   });
 
   it('transitions ACTIVE → CANCELLED and releases stock', async () => {
-    await seedProduct('sku', 1);
+    await seedProduct({ id: 'sku', totalStock: 1 });
 
     const r = await reservationService.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
     const cancelled = await reservationService.cancel(r.id);
@@ -52,7 +52,7 @@ describe('reservationService — lifecycle (confirm / cancel / expiry)', () => {
   });
 
   it('auto-releases stock once the hold elapses (lazy)', async () => {
-    await seedProduct('sku', 1);
+    await seedProduct({ id: 'sku', totalStock: 1 });
     await reservationService.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
     expect((await productService.getAvailability('sku')).availableStock).toBe(0);
 
@@ -64,7 +64,7 @@ describe('reservationService — lifecycle (confirm / cancel / expiry)', () => {
   });
 
   it('allows a new reservation after an expired hold', async () => {
-    await seedProduct('sku', 1);
+    await seedProduct({ id: 'sku', totalStock: 1 });
     await reservationService.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
 
     advanceTime(JUST_PAST_EXPIRY_MS);
@@ -74,7 +74,7 @@ describe('reservationService — lifecycle (confirm / cancel / expiry)', () => {
   });
 
   it('rejects confirming an EXPIRED reservation', async () => {
-    await seedProduct('sku', 1);
+    await seedProduct({ id: 'sku', totalStock: 1 });
     const r = await reservationService.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
 
     advanceTime(JUST_PAST_EXPIRY_MS);
@@ -85,7 +85,7 @@ describe('reservationService — lifecycle (confirm / cancel / expiry)', () => {
   });
 
   it('rejects double-confirm', async () => {
-    await seedProduct('sku', 1);
+    await seedProduct({ id: 'sku', totalStock: 1 });
     const r = await reservationService.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
     await reservationService.confirm(r.id);
     await expect(reservationService.confirm(r.id)).rejects.toBeInstanceOf(
@@ -94,7 +94,7 @@ describe('reservationService — lifecycle (confirm / cancel / expiry)', () => {
   });
 
   it('rejects cancelling a CONFIRMED reservation (purchases are final)', async () => {
-    await seedProduct('sku', 1);
+    await seedProduct({ id: 'sku', totalStock: 1 });
     const r = await reservationService.reserve({ productId: 'sku', userId: 'A', quantity: 1 });
     await reservationService.confirm(r.id);
     await expect(reservationService.cancel(r.id)).rejects.toBeInstanceOf(

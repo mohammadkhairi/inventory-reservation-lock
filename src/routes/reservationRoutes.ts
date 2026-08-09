@@ -19,7 +19,7 @@ export function reservationRoutes(): Router {
     validate({ body: reserveBody }),
     asyncHandler(async (req, res) => {
       const reservation = await reservationController.reserve(req.body as ReserveBody);
-      sendJson(res, reservationResponse, reservation, 201);
+      sendJson({ res, schema: reservationResponse, body: reservation, status: 201 });
     }),
   );
 
@@ -29,7 +29,7 @@ export function reservationRoutes(): Router {
     asyncHandler(async (req, res) => {
       const { id } = req.params as unknown as ReservationIdParams;
       const reservation = await reservationController.confirm(id);
-      sendJson(res, reservationResponse, reservation);
+      sendJson({ res, schema: reservationResponse, body: reservation });
     }),
   );
 
@@ -39,7 +39,7 @@ export function reservationRoutes(): Router {
     asyncHandler(async (req, res) => {
       const { id } = req.params as unknown as ReservationIdParams;
       const reservation = await reservationController.cancel(id);
-      sendJson(res, reservationResponse, reservation);
+      sendJson({ res, schema: reservationResponse, body: reservation });
     }),
   );
 

@@ -29,7 +29,7 @@ if (!url) {
   process.exit(1);
 }
 
-initDatabase(url);
+initDatabase({ url });
 await runWithSession('seed-products', async () => {
   try {
     log.info({ count: SEED_PRODUCTS.length }, 'seeding products');

@@ -23,7 +23,7 @@ export async function getAvailability(productId: string): Promise<AvailabilitySn
       throw new ProductNotFoundError(productId);
     }
     const records = await reservations.findByProductId(productId);
-    const snapshot = computeAvailability(product, records, Date.now());
+    const snapshot = computeAvailability({ product, reservations: records, now: Date.now() });
     log.debug({ productId, snapshot }, 'availability computed');
     return snapshot;
   });

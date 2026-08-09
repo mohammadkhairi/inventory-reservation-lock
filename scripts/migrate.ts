@@ -12,7 +12,7 @@ if (!url) {
   process.exit(1);
 }
 
-initDatabase(url);
+initDatabase({ url });
 await runWithSession('db-migrate', async () => {
   try {
     const handle = getDatabaseHandle();

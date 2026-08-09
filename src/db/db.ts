@@ -45,13 +45,14 @@ const txStore = new AsyncLocalStorage<Database>();
  * Defaults are conservative for a small API replica; override via env
  * (`DB_POOL_MAX`, `DB_IDLE_TIMEOUT_S`, `DB_MAX_LIFETIME_S`, `DB_CONNECT_TIMEOUT_S`).
  */
-export function initDatabase(url: string, opts: DatabasePoolOptions = {}): DatabaseHandle {
+export function initDatabase(params: { url: string; pool?: DatabasePoolOptions }): DatabaseHandle {
   if (handle) return handle;
+  const { url, pool = {} } = params;
   const client = postgres(url, {
-    max: opts.maxConnections ?? DEFAULT_DB_POOL_MAX,
-    idle_timeout: opts.idleTimeoutSeconds ?? DEFAULT_DB_IDLE_TIMEOUT_S,
-    max_lifetime: opts.maxLifetimeSeconds ?? DEFAULT_DB_MAX_LIFETIME_S,
-    connect_timeout: opts.connectTimeoutSeconds ?? DEFAULT_DB_CONNECT_TIMEOUT_S,
+    max: pool.maxConnections ?? DEFAULT_DB_POOL_MAX,
+    idle_timeout: pool.idleTimeoutSeconds ?? DEFAULT_DB_IDLE_TIMEOUT_S,
+    max_lifetime: pool.maxLifetimeSeconds ?? DEFAULT_DB_MAX_LIFETIME_S,
+    connect_timeout: pool.connectTimeoutSeconds ?? DEFAULT_DB_CONNECT_TIMEOUT_S,
   });
   const drizzleDb = drizzle(client, { schema });
   handle = {

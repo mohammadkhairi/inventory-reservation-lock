@@ -10,11 +10,14 @@ import { requestLogger } from './middleware/requestLogger.js';
 import { apiRoutes } from './routes/index.js';
 
 const env = loadEnv();
-initDatabase(env.DATABASE_URL, {
-  maxConnections: env.DB_POOL_MAX,
-  idleTimeoutSeconds: env.DB_IDLE_TIMEOUT_S,
-  maxLifetimeSeconds: env.DB_MAX_LIFETIME_S,
-  connectTimeoutSeconds: env.DB_CONNECT_TIMEOUT_S,
+initDatabase({
+  url: env.DATABASE_URL,
+  pool: {
+    maxConnections: env.DB_POOL_MAX,
+    idleTimeoutSeconds: env.DB_IDLE_TIMEOUT_S,
+    maxLifetimeSeconds: env.DB_MAX_LIFETIME_S,
+    connectTimeoutSeconds: env.DB_CONNECT_TIMEOUT_S,
+  },
 });
 
 const app: Express = express();

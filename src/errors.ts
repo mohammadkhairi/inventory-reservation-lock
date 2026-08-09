@@ -31,19 +31,19 @@ export class ReservationNotFoundError extends DomainError {
 }
 
 export class InsufficientStockError extends DomainError {
-  constructor(available: number, requested: number) {
+  constructor(params: { available: number; requested: number }) {
     super(
       ErrorCode.INSUFFICIENT_STOCK,
-      `Insufficient stock: requested ${requested}, only ${available} available`,
+      `Insufficient stock: requested ${params.requested}, only ${params.available} available`,
     );
   }
 }
 
 export class InvalidReservationStateError extends DomainError {
-  constructor(current: string, attempted: string) {
+  constructor(params: { current: string; attempted: string }) {
     super(
       ErrorCode.INVALID_RESERVATION_STATE,
-      `Reservation cannot be ${attempted} while in state ${current}`,
+      `Reservation cannot be ${params.attempted} while in state ${params.current}`,
     );
   }
 }

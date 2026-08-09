@@ -7,6 +7,7 @@ export async function truncateAll(): Promise<void> {
   await db().execute(sql`TRUNCATE TABLE "reservations", "products" RESTART IDENTITY CASCADE`);
 }
 
-export async function seedProduct(id: string, totalStock: number): Promise<void> {
+export async function seedProduct(params: { id: string; totalStock: number }): Promise<void> {
+  const { id, totalStock } = params;
   await products.save({ id, name: id, totalStock });
 }

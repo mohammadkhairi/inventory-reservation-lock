@@ -13,7 +13,7 @@ describe('reservationService — reserve', () => {
   beforeEach(truncateAll);
 
   it('reserves an item when stock is available', async () => {
-    await seedProduct('sku-1', 3);
+    await seedProduct({ id: 'sku-1', totalStock: 3 });
 
     const reservation = await reservationService.reserve({
       productId: 'sku-1',
@@ -29,7 +29,7 @@ describe('reservationService — reserve', () => {
   });
 
   it('rejects a reservation when stock is exhausted', async () => {
-    await seedProduct('sku-1', 1);
+    await seedProduct({ id: 'sku-1', totalStock: 1 });
     await reservationService.reserve({ productId: 'sku-1', userId: 'user-A', quantity: 1 });
 
     await expect(
@@ -44,7 +44,7 @@ describe('reservationService — reserve', () => {
   });
 
   it('rejects non-positive quantities', async () => {
-    await seedProduct('sku-1', 5);
+    await seedProduct({ id: 'sku-1', totalStock: 5 });
     await expect(
       reservationService.reserve({ productId: 'sku-1', userId: 'user-A', quantity: 0 }),
     ).rejects.toBeInstanceOf(InvalidQuantityError);
@@ -57,7 +57,7 @@ describe('reservationService — reserve', () => {
   });
 
   it('allows partial reservations up to the exact remainder', async () => {
-    await seedProduct('sku-1', 5);
+    await seedProduct({ id: 'sku-1', totalStock: 5 });
     await reservationService.reserve({ productId: 'sku-1', userId: 'A', quantity: 3 });
     await reservationService.reserve({ productId: 'sku-1', userId: 'B', quantity: 2 });
     const snapshot = await productService.getAvailability('sku-1');

@@ -9,7 +9,7 @@ import { closeDatabase, initDatabase } from '../src/db/db.js';
 const url =
   process.env.TEST_DATABASE_URL ?? 'postgres://postgres:postgres@localhost:55432/inventory_test';
 
-initDatabase(url);
+initDatabase({ url });
 
 afterAll(async () => {
   await closeDatabase();

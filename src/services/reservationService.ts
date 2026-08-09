@@ -46,7 +46,7 @@ export async function reserve(input: ReserveInput): Promise<Reservation> {
 
     const now = Date.now();
     const records = await reservations.findByProductId(input.productId);
-    const view = computeAvailability(product, records, now);
+    const view = computeAvailability({ product, reservations: records, now });
     if (view.availableStock < input.quantity) {
       log.warn(
         {
@@ -56,7 +56,10 @@ export async function reserve(input: ReserveInput): Promise<Reservation> {
         },
         'insufficient stock',
       );
-      throw new InsufficientStockError(view.availableStock, input.quantity);
+      throw new InsufficientStockError({
+        available: view.availableStock,
+        requested: input.quantity,
+      });
     }
 
     const reservation: Reservation = {
@@ -74,17 +77,18 @@ export async function reserve(input: ReserveInput): Promise<Reservation> {
 }
 
 export async function confirm(id: string): Promise<Reservation> {
-  return transition(id, ReservationState.CONFIRMED);
+  return transition({ reservationId: id, target: ReservationState.CONFIRMED });
 }
 
 export async function cancel(id: string): Promise<Reservation> {
-  return transition(id, ReservationState.CANCELLED);
+  return transition({ reservationId: id, target: ReservationState.CANCELLED });
 }
 
-async function transition(
-  reservationId: string,
-  target: typeof ReservationState.CONFIRMED | typeof ReservationState.CANCELLED,
-): Promise<Reservation> {
+async function transition(params: {
+  reservationId: string;
+  target: typeof ReservationState.CONFIRMED | typeof ReservationState.CANCELLED;
+}): Promise<Reservation> {
+  const { reservationId, target } = params;
   const verb = target.toLowerCase();
   log.info({ reservationId, target }, 'transition requested');
 
@@ -104,13 +108,13 @@ async function transition(
     }
 
     const now = Date.now();
-    const observed = effectiveState(current, now);
+    const observed = effectiveState({ reservation: current, now });
     if (observed !== ReservationState.ACTIVE) {
       log.warn({ reservationId, observed, target }, 'invalid reservation state');
-      throw new InvalidReservationStateError(observed, verb);
+      throw new InvalidReservationStateError({ current: observed, attempted: verb });
     }
 
-    const updated = withState(current, target, now);
+    const updated = withState({ reservation: current, state: target, now });
     await reservations.save(updated);
     log.info({ reservationId, target }, 'transitioned');
     return updated;

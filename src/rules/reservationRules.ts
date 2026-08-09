@@ -11,26 +11,36 @@ import type { AvailabilitySnapshot, Reservation } from '../types/reservation.js'
  * An ACTIVE reservation past its `expiresAt` counts as EXPIRED for availability.
  * The persisted state may still read ACTIVE — availability doesn't care.
  */
-export function effectiveState(r: Reservation, now: number): ReservationState {
-  if (r.state === ReservationState.ACTIVE && r.expiresAt <= now) {
+export function effectiveState(params: {
+  reservation: Reservation;
+  now: number;
+}): ReservationState {
+  const { reservation, now } = params;
+  if (reservation.state === ReservationState.ACTIVE && reservation.expiresAt <= now) {
     return ReservationState.EXPIRED;
   }
-  return r.state;
+  return reservation.state;
 }
 
-export function withState(r: Reservation, state: ReservationState, now: number): Reservation {
-  return { ...r, state, updatedAt: now };
+export function withState(params: {
+  reservation: Reservation;
+  state: ReservationState;
+  now: number;
+}): Reservation {
+  const { reservation, state, now } = params;
+  return { ...reservation, state, updatedAt: now };
 }
 
-export function computeAvailability(
-  product: Product,
-  reservations: readonly Reservation[],
-  now: number,
-): AvailabilitySnapshot {
+export function computeAvailability(params: {
+  product: Product;
+  reservations: readonly Reservation[];
+  now: number;
+}): AvailabilitySnapshot {
+  const { product, reservations, now } = params;
   let active = 0;
   let confirmed = 0;
   for (const r of reservations) {
-    const state = effectiveState(r, now);
+    const state = effectiveState({ reservation: r, now });
     if (state === ReservationState.ACTIVE) active += r.quantity;
     else if (state === ReservationState.CONFIRMED) confirmed += r.quantity;
   }

@@ -9,7 +9,7 @@ describe('reservationService — concurrency', () => {
   beforeEach(truncateAll);
 
   it('stock=1 with 500 concurrent reservations yields exactly 1 success', async () => {
-    await seedProduct('flash-sku', 1);
+    await seedProduct({ id: 'flash-sku', totalStock: 1 });
 
     const attempts = Array.from({ length: 500 }, (_, i) =>
       reservationService
@@ -34,7 +34,7 @@ describe('reservationService — concurrency', () => {
   it('stock=N under 500 concurrent reservations yields exactly N successes', async () => {
     const stock = 25;
     const requests = 500;
-    await seedProduct('bulk-sku', stock);
+    await seedProduct({ id: 'bulk-sku', totalStock: stock });
 
     const attempts = Array.from({ length: requests }, (_, i) =>
       reservationService
@@ -51,7 +51,7 @@ describe('reservationService — concurrency', () => {
 
   it('parallelizes across products (no head-of-line blocking)', async () => {
     for (let i = 0; i < 10; i += 1) {
-      await seedProduct(`sku-${i}`, 1);
+      await seedProduct({ id: `sku-${i}`, totalStock: 1 });
     }
 
     const attempts = Array.from({ length: 10 }, (_, i) =>
@@ -63,7 +63,7 @@ describe('reservationService — concurrency', () => {
   });
 
   it('mixed reserve/confirm/cancel bursts never oversell', async () => {
-    await seedProduct('sku', 10);
+    await seedProduct({ id: 'sku', totalStock: 10 });
 
     const reserved: string[] = [];
     const ops: Array<Promise<unknown>> = [];

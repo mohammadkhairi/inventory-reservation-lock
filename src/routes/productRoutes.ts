@@ -19,7 +19,7 @@ export function productRoutes(): Router {
     validate({ body: createProductBody }),
     asyncHandler(async (req, res) => {
       const product = await productController.create(req.body as CreateProductBody);
-      sendJson(res, productResponse, product, 201);
+      sendJson({ res, schema: productResponse, body: product, status: 201 });
     }),
   );
 
@@ -29,7 +29,7 @@ export function productRoutes(): Router {
     asyncHandler(async (req, res) => {
       const { id } = req.params as unknown as ProductIdParams;
       const snapshot = await productController.getAvailability(id);
-      sendJson(res, availabilityResponse, snapshot);
+      sendJson({ res, schema: availabilityResponse, body: snapshot });
     }),
   );
 
